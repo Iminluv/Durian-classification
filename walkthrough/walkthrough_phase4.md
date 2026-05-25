@@ -100,5 +100,5 @@ To run the full Phase 4 environment:
    ```
 2. **Launch Tauri Desktop App** (from `ui/` folder):
    ```bash
-   cd ui && npx tauri dev
+   cd ui && npx @tauri-apps/cli dev
    ```

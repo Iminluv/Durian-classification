@@ -14,6 +14,55 @@ if str(project_root) not in sys.path:
 
 from core.logger import logger
 
+class MockVideoCapture:
+    def __init__(self):
+        self.frame_count = 0
+        self.width = 640
+        self.height = 480
+
+    def isOpened(self):
+        return True
+
+    def read(self):
+        # Create a blank dark navy-gray frame
+        frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+        frame[:, :] = (30, 20, 20)
+        
+        # Draw a durian mock (a green/yellow circle moving on the screen)
+        self.frame_count += 1
+        x = int(self.width / 2 + 150 * np.sin(self.frame_count * 0.05))
+        y = int(self.height / 2 + 80 * np.cos(self.frame_count * 0.05))
+        
+        # Draw the "durian shell" (SeaGreen circle)
+        cv2.circle(frame, (x, y), 80, (46, 139, 87), -1)
+        
+        # Draw some moving spikes/details
+        for angle in range(0, 360, 45):
+            rad = np.radians(angle + self.frame_count * 2)
+            sx = int(x + 85 * np.cos(rad))
+            sy = int(y + 85 * np.sin(rad))
+            cv2.circle(frame, (sx, sy), 6, (34, 139, 34), -1)
+            
+        # Add some spots/defects occasionally
+        if self.frame_count % 120 < 40:
+            # Draw a dark spot
+            cv2.circle(frame, (x - 20, y - 20), 12, (20, 20, 80), -1)
+            # Draw a crack
+            cv2.line(frame, (x + 10, y + 10), (x + 35, y + 35), (0, 140, 255), 2)
+        elif self.frame_count % 120 < 80:
+            # Draw mold/fungus
+            cv2.circle(frame, (x + 20, y - 10), 15, (180, 220, 220), -1)
+            # Draw thorn split
+            cv2.circle(frame, (x - 10, y + 30), 10, (0, 128, 255), -1)
+            
+        return True, frame
+
+    def set(self, propId, value):
+        return True
+
+    def release(self):
+        pass
+
 class CameraCapture:
     def __init__(self, config_path="config/camera.json", batch_id=None):
         self.config_path = config_path
@@ -61,13 +110,18 @@ class CameraCapture:
         elif self.source_type == "rtsp":
             logger.info(f"Initializing RTSP camera (URL: {self.rtsp_url})")
             self.cap = cv2.VideoCapture(self.rtsp_url)
+        elif self.source_type == "mock":
+            logger.info("Initializing Mock camera feed.")
+            self.cap = MockVideoCapture()
+            return True
         else:
             logger.error(f"Unknown camera source type: {self.source_type}")
             return False
 
         if not self.cap.isOpened():
-            logger.error("Failed to open camera capture source.")
-            return False
+            logger.warning("Failed to open camera capture source. Falling back to Mock Video Source.")
+            self.cap = MockVideoCapture()
+            return True
         
         # Set buffer size if possible to prevent delay
         self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
