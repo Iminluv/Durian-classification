@@ -1,0 +1,10 @@
+<View>
+  <Image name="image" value="$image"/>
+  <RectangleLabels name="label" toName="image">
+    <Label value="crack" background="#FFA39E"/>
+    <Label value="dark_spot" background="#D3ADF7"/>
+    <Label value="fungus" background="#B7EB8F"/>
+    <Label value="thorn_split" background="#FFE58F"/>
+    <Label value="reject" background="#FF4D4F"/>
+  </RectangleLabels>
+</View>

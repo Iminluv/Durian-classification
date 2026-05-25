@@ -1,0 +1,21 @@
+schema: '2.0'
+stages:
+  augment:
+    cmd: ./.venv/bin/python core/augment.py --input durian --output 
+      data/augmented --multiplier 10
+    deps:
+    - path: core/augment.py
+      hash: md5
+      md5: 98a602774d0510cb5f8e4f0bb0004c42
+      size: 6120
+    - path: durian
+      hash: md5
+      md5: 29bde5e821f8c091aa14f2e2f3d644db.dir
+      size: 118185282
+      nfiles: 4459
+    outs:
+    - path: data/augmented
+      hash: md5
+      md5: 91e0be9c5add1b99ba983b0e109b4501.dir
+      size: 3268186055
+      nfiles: 43456

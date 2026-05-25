@@ -1,0 +1,10 @@
+{
+  "model_dir": "models/yolov26n_v1",
+  "db_path": "data/durian.db",
+  "db_backup_interval_minutes": 15,
+  "db_backup_max_count": 10,
+  "log_level": "INFO",
+  "log_format": "json",
+  "language": "en",
+  "relay_mock": false
+}

@@ -1,0 +1,11 @@
+{
+  "active_benchmark": "standard_qc_v1",
+  "benchmarks_dir": "config/benchmarks",
+  "confidence_thresholds": {
+    "crack": 0.60,
+    "dark_spot": 0.60,
+    "fungus": 0.40,
+    "thorn_split": 0.55,
+    "reject": 0.35
+  }
+}

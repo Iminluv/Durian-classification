@@ -1,0 +1,20 @@
+{
+  "name": "Standard QC v1",
+  "created_by": "operator_name",
+  "created_at": "2026-05-25T10:00:00Z",
+  "defect_rules": {
+    "crack":       { "max_count_A": 0, "max_count_B": 0, "max_count_C": 1, "force_reject": false, "max_area_ratio": 0.02 },
+    "dark_spot":   { "max_count_A": 0, "max_count_B": 1, "max_count_C": 2, "force_reject": false, "max_area_ratio": 0.05 },
+    "fungus":      { "max_count_A": 0, "max_count_B": 0, "max_count_C": 0, "force_reject": true,  "max_area_ratio": 0.00 },
+    "thorn_split": { "max_count_A": 0, "max_count_B": 1, "max_count_C": 2, "force_reject": false, "max_area_ratio": 0.08 },
+    "reject":      { "max_count_A": 0, "max_count_B": 0, "max_count_C": 0, "force_reject": true,  "max_area_ratio": 0.00 }
+  },
+  "global_rules": {
+    "max_total_defects_A": 0,
+    "max_total_defects_B": 1,
+    "max_total_defects_C": 3,
+    "max_total_area_ratio_A": 0.00,
+    "max_total_area_ratio_B": 0.03,
+    "max_total_area_ratio_C": 0.08
+  }
+}

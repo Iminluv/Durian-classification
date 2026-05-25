@@ -1,0 +1,9 @@
+{
+  "source_type": "usb",
+  "usb_device_id": 0,
+  "rtsp_url": "rtsp://192.168.1.100:554/stream",
+  "capture_fps": 5,
+  "motion_threshold": 25,
+  "jpeg_quality": 80,
+  "output_dir": "data/raw"
+}

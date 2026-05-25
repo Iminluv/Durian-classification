@@ -1,0 +1,8 @@
+stages:
+  augment:
+    cmd: ./.venv/bin/python core/augment.py --input durian --output data/augmented --multiplier 10
+    deps:
+    - durian
+    - core/augment.py
+    outs:
+    - data/augmented
