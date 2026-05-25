@@ -5,6 +5,7 @@ debug_workflow_response.json
 evaluation_results.json
 
 .env
+.venv
 
 # Durian Classifier Specific ignores
 data/raw/
@@ -13,11 +14,12 @@ data/backups/
 data/*.db
 data/*.db-wal
 data/*.db-shm
-models/**/*.pt
-models/**/*.onnx
-models/**/*.xml
-models/**/*.bin
-models/**/*.mlpackage
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+runs/
+*.pt
+*.onnx
+*.xml
+*.bin
+*.mlpackage

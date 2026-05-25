@@ -1,4 +1,4 @@
-path: data/augmented
+path: /Users/iminluv/Documents/New project/data/augmented
 train: train/images
 val: valid/images
 test: test/images
