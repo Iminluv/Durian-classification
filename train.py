@@ -22,8 +22,8 @@ from core.logger import logger
 
 def train_model(
     data_cfg="durian.yaml",
-    model_type="yolov8n.yaml",  # Train from scratch using YOLOv8n architecture
-    pretrained_weights="yolov8n.pt",  # Use pretrained weights if available
+    model_type="yolov26n.yaml",  # Train from scratch using YOLOv26n architecture
+    pretrained_weights="yolov26n.pt",  # Use pretrained weights if available
     epochs=50,
     imgsz=640,
     batch_size=16,
@@ -49,17 +49,17 @@ def train_model(
         logger.info(f"Using local pretrained weights: {pretrained_weights}")
         model = YOLO(pretrained_weights)
     else:
-        logger.info(f"Pretrained weights '{pretrained_weights}' not found. Downloading/loading default yolov8n.pt")
+        logger.info(f"Pretrained weights '{pretrained_weights}' not found. Downloading/loading default yolov26n.pt")
         try:
-            model = YOLO("yolov8n.pt")
+            model = YOLO("yolov26n.pt")
         except Exception as e:
-            logger.warning(f"Could not load yolov8n.pt: {e}. Training from scratch using configuration: {model_type}")
+            logger.warning(f"Could not load yolov26n.pt: {e}. Training from scratch using configuration: {model_type}")
             model = YOLO(model_type)
 
     logger.info(f"Starting training on device: {device} for {epochs} epochs...")
     
     # Start MLflow run
-    with mlflow.start_run(run_name="yolov8n_durian_run") as run:
+    with mlflow.start_run(run_name="yolov26n_durian_run") as run:
         # Log basic training parameters to MLflow
         mlflow.log_params({
             "epochs": epochs,
@@ -100,7 +100,7 @@ def train_model(
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Train YOLOv8 model on durian defect dataset")
+    parser = argparse.ArgumentParser(description="Train YOLOv26 model on durian defect dataset")
     parser.add_argument("--data", default="durian.yaml", help="Path to YOLO dataset config yaml")
     parser.add_argument("--epochs", type=int, default=5, help="Number of training epochs") # Small default for testing
     parser.add_argument("--imgsz", type=int, default=640, help="Image size")

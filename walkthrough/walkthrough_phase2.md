@@ -12,7 +12,7 @@ This walkthrough details the achievements and files created during the completio
   - **MLflow Integration**: Auto-logging parameters, loss functions, metrics, and best weights artifacts.
   - **Auto-Device Selection**: Checks for device availability in order: Apple Silicon MPS (Metal Performance Shaders) → CUDA GPU → CPU.
   - **Loss Weights Configuration**: Standard inputs optimized for high recall on critical classes (`fungus` and `reject`).
-  - **Pre-trained Weight Download/Load**: Attempts to load local `yolov8n.pt` weights and automatically downloads it if not found, with a fallback to training from scratch using YOLO configuration structure.
+  - **Pre-trained Weight Download/Load**: Attempts to load local `yolov26n.pt` weights and automatically downloads it if not found, with a fallback to training from scratch using YOLO configuration structure.
 
 ## 3. Multi-Format Model Exporter
 
@@ -52,4 +52,4 @@ We executed training locally for 1 epoch to verify the end-to-end code integrati
 ```bash
 ./.venv/bin/python train.py --epochs 1
 ```
-This successfully downloaded `yolov8n.pt`, validated the dataset path under `data/augmented/`, ran training with MPS acceleration on the Apple Silicon GPU, and generated local weights.
+This successfully downloaded `yolov26n.pt`, validated the dataset path under `data/augmented/`, ran training with MPS acceleration on the Apple Silicon GPU, and generated local weights.

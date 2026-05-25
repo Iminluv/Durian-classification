@@ -163,7 +163,7 @@ def evaluate_model(
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Evaluate YOLOv8 model and verify KPI gates")
+    parser = argparse.ArgumentParser(description="Evaluate YOLOv26 model and verify KPI gates")
     parser.add_argument("--weights", default="best.pt", help="Path to model weights or exported model folder")
     parser.add_argument("--data", default="durian.yaml", help="Path to YOLO dataset config")
     parser.add_argument("--benchmark", action="store_true", help="Perform inference latency benchmark")
