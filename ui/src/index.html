@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="app_title">Automated Durian Classifier</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <div class="logo-icon">D</div>
+                <div class="logo-text">Durian Classifier</div>
+            </div>
+            
+            <nav class="nav-menu">
+                <li class="nav-item">
+                    <a id="nav-dash-link" class="nav-link active" onclick="switchTab('dashboard')">
+                        <span class="nav-icon">📊</span>
+                        <span data-i18n="nav_dashboard">Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a id="nav-batch-link" class="nav-link" onclick="switchTab('batches')">
+                        <span class="nav-icon">📦</span>
+                        <span data-i18n="nav_batches">Batches</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a id="nav-bench-link" class="nav-link" onclick="switchTab('benchmarks')">
+                        <span class="nav-icon">⚙️</span>
+                        <span data-i18n="nav_benchmarks">Benchmarks</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a id="nav-hist-link" class="nav-link" onclick="switchTab('history')">
+                        <span class="nav-icon">📜</span>
+                        <span data-i18n="nav_history">History & Reports</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a id="nav-settings-link" class="nav-link" onclick="switchTab('settings')">
+                        <span class="nav-icon">🔧</span>
+                        <span data-i18n="nav_settings">Settings</span>
+                    </a>
+                </li>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="status-badge">
+                    <div id="ws-status-dot" class="status-dot"></div>
+                    <span id="ws-status-text" data-i18n="status_disconnected">Disconnected</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Alert Banner -->
+            <div id="critical-alert-banner" class="alert-banner">
+                <div class="alert-icon">⚠️</div>
+                <div>
+                    <h4 style="font-weight: 700; margin-bottom: 2px;">CRITICAL DEFECT DETECTED / PHÁT HIỆN LỖI NGHIÊM TRỌNG</h4>
+                    <p style="font-size: 13px; opacity: 0.9;">Fungus or reject condition has triggered emergency mechanical reject diverter.</p>
+                </div>
+            </div>
+
+            <!-- DASHBOARD PANEL -->
+            <section id="panel-dashboard" class="tab-panel active">
+                <div class="page-header">
+                    <h1 class="page-title" data-i18n="nav_dashboard">Dashboard</h1>
+                    <div style="font-size: 14px; color: var(--text-secondary);">
+                        <span data-i18n="active_batch">Active Batch</span>: <strong id="dash-active-batch-id" data-i18n="no_active_batch">None</strong>
+                    </div>
+                </div>
+
+                <div class="grid-2col">
+                    <!-- Left: Camera Video Feed -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title">
+                                <span>🎥</span> <span data-i18n="live_camera_feed">Live Camera Feed</span>
+                            </h2>
+                        </div>
+                        <div class="video-wrapper">
+                            <canvas id="live-canvas"></canvas>
+                            <div id="video-placeholder" class="video-placeholder">
+                                <span style="font-size: 48px;">📷</span>
+                                <p data-i18n="status_disconnected">Disconnected from Live Video Stream</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Current Grading Display -->
+                    <div class="panel grade-panel">
+                        <div class="panel-header" style="width: 100%;">
+                            <h2 class="panel-title" data-i18n="current_grade">Current Grade</h2>
+                        </div>
+                        
+                        <div id="huge-grade-badge" class="grade-badge-huge">-</div>
+                        <div id="grade-reasons-container" class="defect-reasons" style="display: none;"></div>
+
+                        <!-- Defect Confidence Bars -->
+                        <div class="defect-list-items" style="margin-top: 24px;">
+                            <div class="defect-item-progress">
+                                <div class="defect-label-row">
+                                    <span data-i18n="rule_defect">Defect</span>: <span>crack</span>
+                                    <span id="conf-val-crack">0%</span>
+                                </div>
+                                <div class="progress-bar-bg">
+                                    <div id="conf-bar-crack" class="progress-bar-fill" style="background-color: var(--color-grade-b);"></div>
+                                </div>
+                            </div>
+                            <div class="defect-item-progress">
+                                <div class="defect-label-row">
+                                    <span data-i18n="rule_defect">Defect</span>: <span>dark_spot</span>
+                                    <span id="conf-val-dark_spot">0%</span>
+                                </div>
+                                <div class="progress-bar-bg">
+                                    <div id="conf-bar-dark_spot" class="progress-bar-fill" style="background-color: var(--color-grade-c);"></div>
+                                </div>
+                            </div>
+                            <div class="defect-item-progress">
+                                <div class="defect-label-row">
+                                    <span data-i18n="rule_defect">Defect</span>: <span>fungus</span>
+                                    <span id="conf-val-fungus">0%</span>
+                                </div>
+                                <div class="progress-bar-bg">
+                                    <div id="conf-bar-fungus" class="progress-bar-fill" style="background-color: var(--color-reject);"></div>
+                                </div>
+                            </div>
+                            <div class="defect-item-progress">
+                                <div class="defect-label-row">
+                                    <span data-i18n="rule_defect">Defect</span>: <span>thorn_split</span>
+                                    <span id="conf-val-thorn_split">0%</span>
+                                </div>
+                                <div class="progress-bar-bg">
+                                    <div id="conf-bar-thorn_split" class="progress-bar-fill" style="background-color: var(--color-grade-b);"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom: Total counts row & Recent Logs -->
+                <div class="grid-2col">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title">📊 <span data-i18n="defect_frequencies">Defect Frequency</span></h2>
+                        </div>
+                        <div class="grid-4col">
+                            <div class="counter-card a">
+                                <span class="counter-label" data-i18n="stats_grade_a">Grade A</span>
+                                <span id="dash-count-a" class="counter-value">0</span>
+                            </div>
+                            <div class="counter-card b">
+                                <span class="counter-label" data-i18n="stats_grade_b">Grade B</span>
+                                <span id="dash-count-b" class="counter-value">0</span>
+                            </div>
+                            <div class="counter-card c">
+                                <span class="counter-label" data-i18n="stats_grade_c">Grade C</span>
+                                <span id="dash-count-c" class="counter-value">0</span>
+                            </div>
+                            <div class="counter-card reject">
+                                <span class="counter-label" data-i18n="stats_reject">Reject</span>
+                                <span id="dash-count-reject" class="counter-value">0</span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px; font-size: 14px; text-align: center; color: var(--text-secondary);">
+                            <span data-i18n="stats_total">Total Processed</span>: <strong id="dash-total-count">0</strong>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title">📋 <span data-i18n="recent_events">Recent Events</span></h2>
+                        </div>
+                        <div id="recent-events-list" class="event-list">
+                            <!-- Events populated dynamically by event-handler -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- BATCH MANAGER PANEL -->
+            <section id="panel-batches" class="tab-panel">
+                <div class="page-header">
+                    <h1 class="page-title" data-i18n="nav_batches">Quản Lý Lô</h1>
+                </div>
+
+                <div class="grid-2col">
+                    <!-- Start/Stop controls -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title">⚙️ <span data-i18n="start_batch">Start Batch</span></h2>
+                        </div>
+                        <form id="batch-form" onsubmit="handleBatchSubmit(event)">
+                            <div class="form-group">
+                                <label for="input-batch-id" data-i18n="batch_id">Batch ID</label>
+                                <input type="text" id="input-batch-id" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="input-operator-id" data-i18n="operator_id">Operator ID</label>
+                                <input type="text" id="input-operator-id" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="select-batch-benchmark" data-i18n="select_benchmark">Select Benchmark</label>
+                                <select id="select-batch-benchmark" required>
+                                    <!-- Dynamic benchmarks -->
+                                </select>
+                            </div>
+                            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                                <button type="submit" id="btn-start-batch" class="btn btn-success" style="flex: 1;">
+                                    <span data-i18n="start_batch">Start Batch</span>
+                                </button>
+                                <button type="button" id="btn-stop-batch" class="btn btn-danger" onclick="stopActiveBatch()" style="flex: 1;" disabled>
+                                    <span data-i18n="stop_batch">Stop Batch</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Current Batch Status panel -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title">ℹ️ <span data-i18n="active_batch">Active Batch Info</span></h2>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 16px;">
+                            <div class="compare-row">
+                                <span data-i18n="batch_id">Batch ID</span>
+                                <span id="info-batch-id" class="metric-val">-</span>
+                            </div>
+                            <div class="compare-row">
+                                <span data-i18n="operator">Operator</span>
+                                <span id="info-operator" class="metric-val">-</span>
+                            </div>
+                            <div class="compare-row">
+                                <span data-i18n="select_benchmark">Benchmark</span>
+                                <span id="info-benchmark" class="metric-val">-</span>
+                            </div>
+                            <div class="compare-row">
+                                <span data-i18n="col_time">Start Time</span>
+                                <span id="info-start-time" class="metric-val">-</span>
+                            </div>
+                            <div class="compare-row">
+                                <span>Status</span>
+                                <span id="info-status" class="metric-val" style="color: var(--color-reject);">STOPPED</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- BENCHMARK MANAGER PANEL -->
+            <section id="panel-benchmarks" class="tab-panel">
+                <div class="page-header">
+                    <h1 class="page-title" data-i18n="benchmark_title">Benchmark Config</h1>
+                    <button class="btn btn-primary" onclick="showNewBenchmarkForm()" data-i18n="btn_new_benchmark">New Benchmark</button>
+                </div>
+
+                <div class="grid-2col">
+                    <!-- Left: list of benchmarks -->
+                    <div class="panel" style="max-height: 500px; overflow-y: auto;">
+                        <div class="panel-header">
+                            <h2 class="panel-title">📁 Benchmark Profiles</h2>
+                        </div>
+                        <div id="benchmarks-list-group" style="display: flex; flex-direction: column; gap: 10px;">
+                            <!-- Dynamic list -->
+                        </div>
+                    </div>
+
+                    <!-- Right: Editor Form -->
+                    <div class="panel" id="benchmark-editor-panel" style="display: none;">
+                        <div class="panel-header">
+                            <h2 class="panel-title" id="editor-title">Edit Benchmark</h2>
+                        </div>
+                        <form id="benchmark-edit-form" onsubmit="saveBenchmark(event)">
+                            <input type="hidden" id="edit-benchmark-filename">
+                            <div class="form-group">
+                                <label for="edit-benchmark-name">Benchmark Name</label>
+                                <input type="text" id="edit-benchmark-name" required>
+                            </div>
+
+                            <h3 style="font-size: 14px; margin: 16px 0 8px 0; font-weight: 700; color: var(--text-secondary);">DEFECT RULES</h3>
+                            
+                            <!-- Defect classes rules grid -->
+                            <div style="display: flex; flex-direction: column; gap: 16px;">
+                                <!-- CRACK -->
+                                <div style="padding: 12px; background: rgba(0,0,0,0.1); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                                    <div style="display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 8px;">
+                                        <span>Crack (Nứt vỏ)</span>
+                                        <label><input type="checkbox" id="rule-force-crack"> Force Reject</label>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Max A</label>
+                                            <input type="number" id="rule-max-a-crack" min="0" value="0">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Max B</label>
+                                            <input type="number" id="rule-max-b-crack" min="0" value="0">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Max C</label>
+                                            <input type="number" id="rule-max-c-crack" min="0" value="1">
+                                        </div>
+                                    </div>
+                                    <div class="slider-group">
+                                        <div class="slider-labels">
+                                            <span data-i18n="rule_max_area">Max Area Ratio</span>
+                                            <span id="area-val-crack">2%</span>
+                                        </div>
+                                        <input type="range" id="rule-area-crack" min="0" max="100" value="2" oninput="document.getElementById('area-val-crack').innerText = this.value + '%'">
+                                    </div>
+                                </div>
+
+                                <!-- DARK SPOT -->
+                                <div style="padding: 12px; background: rgba(0,0,0,0.1); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                                    <div style="display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 8px;">
+                                        <span>Dark Spot (Đốm đen)</span>
+                                        <label><input type="checkbox" id="rule-force-dark_spot"> Force Reject</label>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Max A</label>
+                                            <input type="number" id="rule-max-a-dark_spot" min="0" value="0">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Max B</label>
+                                            <input type="number" id="rule-max-b-dark_spot" min="0" value="1">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Max C</label>
+                                            <input type="number" id="rule-max-c-dark_spot" min="0" value="2">
+                                        </div>
+                                    </div>
+                                    <div class="slider-group">
+                                        <div class="slider-labels">
+                                            <span data-i18n="rule_max_area">Max Area Ratio</span>
+                                            <span id="area-val-dark_spot">5%</span>
+                                        </div>
+                                        <input type="range" id="rule-area-dark_spot" min="0" max="100" value="5" oninput="document.getElementById('area-val-dark_spot').innerText = this.value + '%'">
+                                    </div>
+                                </div>
+
+                                <!-- FUNGUS -->
+                                <div style="padding: 12px; background: rgba(0,0,0,0.1); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                                    <div style="display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 8px;">
+                                        <span>Fungus (Nấm bệnh)</span>
+                                        <label><input type="checkbox" id="rule-force-fungus" checked> Force Reject</label>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Max A</label>
+                                            <input type="number" id="rule-max-a-fungus" min="0" value="0">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Max B</label>
+                                            <input type="number" id="rule-max-b-fungus" min="0" value="0">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Max C</label>
+                                            <input type="number" id="rule-max-c-fungus" min="0" value="0">
+                                        </div>
+                                    </div>
+                                    <div class="slider-group">
+                                        <div class="slider-labels">
+                                            <span data-i18n="rule_max_area">Max Area Ratio</span>
+                                            <span id="area-val-fungus">0%</span>
+                                        </div>
+                                        <input type="range" id="rule-area-fungus" min="0" max="100" value="0" oninput="document.getElementById('area-val-fungus').innerText = this.value + '%'">
+                                    </div>
+                                </div>
+
+                                <!-- THORN SPLIT -->
+                                <div style="padding: 12px; background: rgba(0,0,0,0.1); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                                    <div style="display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 8px;">
+                                        <span>Thorn Split (Bể gai)</span>
+                                        <label><input type="checkbox" id="rule-force-thorn_split"> Force Reject</label>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Max A</label>
+                                            <input type="number" id="rule-max-a-thorn_split" min="0" value="0">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Max B</label>
+                                            <input type="number" id="rule-max-b-thorn_split" min="0" value="1">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Max C</label>
+                                            <input type="number" id="rule-max-c-thorn_split" min="0" value="2">
+                                        </div>
+                                    </div>
+                                    <div class="slider-group">
+                                        <div class="slider-labels">
+                                            <span data-i18n="rule_max_area">Max Area Ratio</span>
+                                            <span id="area-val-thorn_split">8%</span>
+                                        </div>
+                                        <input type="range" id="rule-area-thorn_split" min="0" max="100" value="8" oninput="document.getElementById('area-val-thorn_split').innerText = this.value + '%'">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                                <button type="submit" class="btn btn-primary" style="flex: 1;">Save</button>
+                                <button type="button" class="btn btn-secondary" onclick="document.getElementById('benchmark-editor-panel').style.display='none'">Cancel</button>
+                                <button type="button" id="btn-delete-benchmark" class="btn btn-danger" onclick="deleteBenchmark()">Delete</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- HISTORY & REPORTS PANEL -->
+            <section id="panel-history" class="tab-panel">
+                <div class="page-header">
+                    <h1 class="page-title" data-i18n="history_title">Detection History Logs</h1>
+                </div>
+
+                <div class="panel">
+                    <div style="display: flex; gap: 16px; margin-bottom: 20px;">
+                        <input type="text" id="history-search-input" data-i18n-placeholder="search_placeholder" placeholder="Search by Batch ID..." style="flex: 1;">
+                        <button class="btn btn-primary" onclick="searchHistory()">Search</button>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="history-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="col_id">STT</th>
+                                    <th data-i18n="col_time">Timestamp</th>
+                                    <th data-i18n="col_batch">Batch ID</th>
+                                    <th data-i18n="col_grade">Grade</th>
+                                    <th data-i18n="col_defects">Defects Found</th>
+                                    <th data-i18n="col_confidence">Confidence</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="pagination">
+                        <button id="btn-prev-page" class="btn btn-secondary" onclick="changePage(-1)">Prev</button>
+                        <span id="page-num-indicator" class="page-info">Page 1</span>
+                        <button id="btn-next-page" class="btn btn-secondary" onclick="changePage(1)">Next</button>
+                    </div>
+
+                    <!-- Report Download Buttons -->
+                    <div style="display: flex; gap: 16px; margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                        <button class="btn btn-success" onclick="downloadReport('excel')">
+                            📊 <span data-i18n="btn_download_excel">Download Excel</span>
+                        </button>
+                        <button class="btn btn-secondary" onclick="downloadReport('pdf')">
+                            📄 <span data-i18n="btn_download_pdf">Download PDF</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SETTINGS PANEL -->
+            <section id="panel-settings" class="tab-panel">
+                <div class="page-header">
+                    <h1 class="page-title" data-i18n="settings_title">System Settings</h1>
+                </div>
+
+                <div class="grid-2col">
+                    <!-- Left: Camera Source, Thresholds & i18n -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title">⚙️ App Settings</h2>
+                        </div>
+                        <form id="settings-form" onsubmit="saveAppSettings(event)">
+                            <div class="form-group">
+                                <label data-i18n="lang_label">Language</label>
+                                <select id="settings-lang-select" onchange="setLanguage(this.value)">
+                                    <option value="vi">Tiếng Việt</option>
+                                    <option value="en">English</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label data-i18n="camera_source">Camera Source</label>
+                                <select id="settings-cam-source" onchange="toggleCameraFields(this.value)">
+                                    <option value="usb">USB UVC Camera</option>
+                                    <option value="rtsp">RTSP IP Camera</option>
+                                </select>
+                            </div>
+                            <div id="settings-usb-group" class="form-group">
+                                <label data-i18n="camera_id">USB Device ID</label>
+                                <input type="number" id="settings-usb-id" min="0" value="0">
+                            </div>
+                            <div id="settings-rtsp-group" class="form-group" style="display: none;">
+                                <label data-i18n="rtsp_url">RTSP Stream URL</label>
+                                <input type="text" id="settings-rtsp-url">
+                            </div>
+                            <div class="form-group">
+                                <label data-i18n="motion_thresh">Motion Threshold</label>
+                                <div class="slider-group">
+                                    <div class="slider-labels">
+                                        <span>Sensitivity</span>
+                                        <span id="motion-thresh-val">25</span>
+                                    </div>
+                                    <input type="range" id="settings-motion-thresh" min="5" max="100" value="25" oninput="document.getElementById('motion-thresh-val').innerText = this.value">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="margin-top: 12px; width: 100%;">
+                                <span data-i18n="save_settings">Save Settings</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Right: OTA Updates panel & System Health -->
+                    <div style="display: flex; flex-direction: column; gap: 24px;">
+                        <!-- System Health / Status -->
+                        <div class="panel">
+                            <div class="panel-header">
+                                <h2 class="panel-title">🛡️ System Status</h2>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
+                                <div class="compare-row">
+                                    <span>Engine Backend</span>
+                                    <span id="health-backend" class="metric-val">Loading...</span>
+                                </div>
+                                <div class="compare-row">
+                                    <span>Active Model</span>
+                                    <span id="health-model" class="metric-val">Loading...</span>
+                                </div>
+                                <div class="compare-row">
+                                    <span>Average Latency</span>
+                                    <span id="health-latency" class="metric-val">Loading...</span>
+                                </div>
+                                <div class="compare-row">
+                                    <span>DB Backup Status</span>
+                                    <span id="health-backup" class="metric-val">Enabled</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- OTA updates -->
+                        <div class="panel">
+                            <div class="panel-header">
+                                <h2 class="panel-title">🔄 <span data-i18n="ota_updates">OTA Model Updates</span></h2>
+                            </div>
+                            <div id="ota-loading-indicator" style="display: none; text-align: center; padding: 20px;">
+                                <span>🔄</span> Checking for pending updates...
+                            </div>
+                            <div id="ota-empty-state" style="text-align: center; color: var(--text-muted); padding: 12px 0;">
+                                <span data-i18n="no_pending_updates">System is up to date.</span>
+                            </div>
+                            <!-- Compare panel -->
+                            <div id="ota-compare-panel" style="display: none;">
+                                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+                                    <span data-i18n="pending_model">New model version is available!</span>
+                                </p>
+                                <div class="compare-container">
+                                    <!-- Current Model -->
+                                    <div class="compare-box">
+                                        <div class="compare-title">Current Model</div>
+                                        <div class="compare-row">
+                                            <span>Recall</span>
+                                            <span id="ota-curr-recall" class="metric-val">84.2%</span>
+                                        </div>
+                                        <div class="compare-row">
+                                            <span>mAP@50</span>
+                                            <span id="ota-curr-map" class="metric-val">71.0%</span>
+                                        </div>
+                                        <div class="compare-row">
+                                            <span>Latency</span>
+                                            <span id="ota-curr-latency" class="metric-val">120ms</span>
+                                        </div>
+                                    </div>
+                                    <!-- New Model -->
+                                    <div class="compare-box highlight">
+                                        <div class="compare-title" style="color: var(--color-grade-a);">New Model (OTA)</div>
+                                        <div class="compare-row">
+                                            <span>Recall</span>
+                                            <span id="ota-new-recall" class="metric-val better">89.5%</span>
+                                        </div>
+                                        <div class="compare-row">
+                                            <span>mAP@50</span>
+                                            <span id="ota-new-map" class="metric-val better">75.6%</span>
+                                        </div>
+                                        <div class="compare-row">
+                                            <span>Latency</span>
+                                            <span id="ota-new-latency" class="metric-val">115ms</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 12px;">
+                                    <button class="btn btn-success" id="ota-btn-approve" onclick="approveOTA()" style="flex: 1;">
+                                        <span data-i18n="btn_approve">Approve Update</span>
+                                    </button>
+                                    <button class="btn btn-danger" id="ota-btn-reject" onclick="rejectOTA()" style="flex: 1;">
+                                        <span data-i18n="btn_reject">Reject Update</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Scripts loading -->
+    <script src="js/i18n.js"></script>
+    <script src="js/components/live-feed.js"></script>
+    <script src="js/components/grade-display.js"></script>
+    <script src="js/components/batch-controls.js"></script>
+    <script src="js/components/detection-history.js"></script>
+    <script src="js/components/benchmark-manager.js"></script>
+    <script src="js/components/model-update-panel.js"></script>
+    <script src="js/components/settings-panel.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -160,15 +160,23 @@ class DatabaseManager:
         finally:
             conn.close()
 
-    def get_detections_history(self, limit: int = 100, offset: int = 0) -> list[dict]:
+    def get_detections_history(self, limit: int = 100, offset: int = 0, batch_id: str = None) -> list[dict]:
         conn = self.get_connection()
         try:
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT * FROM detections 
-                ORDER BY timestamp DESC 
-                LIMIT ? OFFSET ?;
-            """, (limit, offset))
+            if batch_id:
+                cursor.execute("""
+                    SELECT * FROM detections 
+                    WHERE batch_id = ?
+                    ORDER BY timestamp DESC 
+                    LIMIT ? OFFSET ?;
+                """, (batch_id, limit, offset))
+            else:
+                cursor.execute("""
+                    SELECT * FROM detections 
+                    ORDER BY timestamp DESC 
+                    LIMIT ? OFFSET ?;
+                """, (limit, offset))
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
         except Exception as e:
