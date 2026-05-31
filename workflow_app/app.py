@@ -63,6 +63,7 @@ def get_config():
 @app.post("/api/upload")
 async def upload_files(files: List[UploadFile] = File(...)):
     """Upload image files and optional label files."""
+    print(f"[API Log] Received request to upload {len(files)} files.")
     images_dir = get_absolute_path("uploads/images")
     labels_dir = get_absolute_path("uploads/labels")
     
@@ -80,6 +81,7 @@ async def upload_files(files: List[UploadFile] = File(...)):
         
         if file_ext in [".jpg", ".jpeg", ".png"]:
             dest_path = images_dir / filename
+            print(f"[API Log] Saving image: {filename} to {dest_path}")
             with open(dest_path, "wb") as f:
                 shutil.copyfileobj(file.file, f)
             uploaded_files.append(filename)
@@ -88,20 +90,24 @@ async def upload_files(files: List[UploadFile] = File(...)):
             label_filename = f"{Path(filename).stem}.txt"
             label_path = labels_dir / label_filename
             if not label_path.exists():
+                print(f"[API Log] Auto-generating empty label file: {label_filename}")
                 with open(label_path, "w") as lf:
                     pass
                     
         elif file_ext == ".txt":
             dest_path = labels_dir / filename
+            print(f"[API Log] Saving label file: {filename} to {dest_path}")
             with open(dest_path, "wb") as f:
                 shutil.copyfileobj(file.file, f)
             uploaded_files.append(filename)
             
+    print(f"[API Log] Upload complete. Saved {len(uploaded_files)} files successfully.")
     return {"uploaded": uploaded_files, "count": len(uploaded_files)}
 
 @app.delete("/api/uploads")
 def clear_uploads():
     """Clear all files in the uploads/ directory."""
+    print("[API Log] Request to clear all uploaded files.")
     images_dir = get_absolute_path("uploads/images")
     labels_dir = get_absolute_path("uploads/labels")
     
@@ -112,19 +118,23 @@ def clear_uploads():
                 if item.is_file():
                     item.unlink()
                     deleted_count += 1
+    print(f"[API Log] Cleared uploads. Deleted {deleted_count} files.")
     return {"success": True, "deleted_count": deleted_count}
 
 @app.get("/api/images")
 def list_images(images_path: str = "durian/test/images"):
     """List all supported images in the specified directory."""
+    print(f"[API Log] Listing images for path: {images_path}")
     abs_path = get_absolute_path(images_path)
     if not abs_path.exists() or not abs_path.is_dir():
+        print(f"[API Log] Directory not found: {images_path}")
         raise HTTPException(status_code=404, detail=f"Images directory not found: {images_path}")
     
     images = []
     for ext in ["*.jpg", "*.jpeg", "*.png", "*.JPG", "*.JPEG", "*.PNG"]:
         images.extend(p.name for p in abs_path.glob(ext))
     images.sort()
+    print(f"[API Log] Found {len(images)} images in {images_path}")
     return {"images": images, "count": len(images)}
 
 @app.get("/api/labels")

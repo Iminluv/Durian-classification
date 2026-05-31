@@ -176,6 +176,9 @@ def run_workflow_evaluation():
         lbl_dir = TEST_LABELS
         label_path = Path(lbl_dir) / (img_path.stem + ".txt")
         expected = get_gt_classes_names(label_path)
+        # If expected is empty (e.g. custom upload without annotations),
+        # default to all classes so the workflow does not filter out predictions
+        workflow_expected = expected if expected else CLASS_NAMES
 
         # Do not skip unannotated files to support custom image uploads
         # if not expected:
@@ -192,7 +195,7 @@ def run_workflow_evaluation():
                 workspace_name=workspace_name,
                 workflow_id=workflow_id,
                 images={"image": str(img_path)},
-                parameters={"expected_classes": expected}
+                parameters={"expected_classes": workflow_expected}
             )
             elapsed_time = time.perf_counter() - start_time
 
