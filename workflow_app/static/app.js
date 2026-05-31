@@ -58,7 +58,6 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentSelectedImage = null;
     let availableImages = [];
     let userSelectedImage = false;
-    let runTimestamp = Date.now();
 
     // Helper to log to the console log component
     function logToConsole(message, type = "info") {
@@ -197,6 +196,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const results = await response.json();
                 if (results && results.length > 0) {
                     renderResults(results);
+                    precacheResultsImages(results);
                     logToConsole("Loaded previous evaluation results.");
                 }
             }
@@ -332,6 +332,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
             
+            clearImageBlobCache();
             try {
                 const response = await fetch("/api/uploads", { method: "DELETE" });
                 if (response.ok) {
@@ -407,8 +408,63 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
     }
 
+    // Global image blob cache to load images instantly once fetched
+    const imageBlobCache = {
+        original: {},  // filename -> Promise of objectURL
+        annotated: {}  // filename -> Promise of objectURL
+    };
+
+    // Helper to clear blob cache and revoke object URLs to prevent memory leaks
+    function clearImageBlobCache() {
+        for (const type of ['original', 'annotated']) {
+            for (const promise of Object.values(imageBlobCache[type])) {
+                promise.then(url => {
+                    if (url && url.startsWith('blob:')) {
+                        URL.revokeObjectURL(url);
+                    }
+                }).catch(() => {});
+            }
+            imageBlobCache[type] = {};
+        }
+    }
+
+    // Helper to get or fetch image URL from blob cache
+    function getCachedImageUrl(type, filename, fallbackUrl) {
+        if (imageBlobCache[type][filename]) {
+            return imageBlobCache[type][filename];
+        }
+        
+        const fetchPromise = (async () => {
+            try {
+                const response = await fetch(fallbackUrl);
+                if (!response.ok) throw new Error("Failed to fetch image");
+                const blob = await response.blob();
+                return URL.createObjectURL(blob);
+            } catch (e) {
+                console.error("Cache fetch failed, falling back to direct URL", e);
+                delete imageBlobCache[type][filename];
+                return fallbackUrl;
+            }
+        })();
+        
+        imageBlobCache[type][filename] = fetchPromise;
+        return fetchPromise;
+    }
+
+    // Pre-cache all images in background
+    function precacheResultsImages(results) {
+        const imgPath = imagesPathInput.value.trim();
+        results.forEach(result => {
+            const originalUrl = `/api/image?type=original&filename=${encodeURIComponent(result.image)}&path=${encodeURIComponent(imgPath)}`;
+            const annotatedUrl = `/api/image?type=annotated&filename=${encodeURIComponent(result.image)}`;
+            
+            getCachedImageUrl('original', result.image, originalUrl);
+            getCachedImageUrl('annotated', result.image, annotatedUrl);
+        });
+    }
+
     // Display details of a specific image result in comparison panel
-    function displayResultDetails(result) {
+    async function displayResultDetails(result) {
         currentSelectedImage = result;
         
         // Highlight active gallery item
@@ -433,14 +489,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Set Images
         const imgPath = imagesPathInput.value.trim();
-        const originalImgUrl = `/api/image?type=original&filename=${encodeURIComponent(result.image)}&path=${encodeURIComponent(imgPath)}&t=${runTimestamp}`;
+        const originalFallbackUrl = `/api/image?type=original&filename=${encodeURIComponent(result.image)}&path=${encodeURIComponent(imgPath)}`;
+        const annotatedFallbackUrl = `/api/image?type=annotated&filename=${encodeURIComponent(result.image)}`;
+
+        // Fetch using cache helper
+        const originalUrl = await getCachedImageUrl('original', result.image, originalFallbackUrl);
+        const annotatedUrl = await getCachedImageUrl('annotated', result.image, annotatedFallbackUrl);
+
+        // Guard against race conditions if user switched image during fetch
+        if (currentSelectedImage.image !== result.image) return;
         
         originalImageWrapper.innerHTML = `
-            <img src="${originalImgUrl}" alt="Original image" id="original-img-el" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+            <img src="${originalUrl}" alt="Original image" id="original-img-el" style="max-width: 100%; max-height: 100%; object-fit: contain;">
             <div id="original-bbox-container" style="position: absolute; pointer-events: none; z-index: 10;"></div>
         `;
         
-        annotatedImageWrapper.innerHTML = `<img src="/api/image?type=annotated&filename=${encodeURIComponent(result.image)}&t=${runTimestamp}" alt="Annotated workflow output">`;
+        annotatedImageWrapper.innerHTML = `<img src="${annotatedUrl}" alt="Annotated workflow output">`;
 
         const originalImgEl = document.getElementById("original-img-el");
         const originalContainer = document.getElementById("original-bbox-container");
@@ -666,7 +730,7 @@ document.addEventListener("DOMContentLoaded", () => {
             
             item.innerHTML = `
                 <div class="gallery-thumb">
-                    <img src="/api/image?type=original&filename=${encodeURIComponent(result.image)}&path=${encodeURIComponent(imgPath)}&t=${runTimestamp}" alt="${result.image}" loading="lazy">
+                    <img src="/api/image?type=original&filename=${encodeURIComponent(result.image)}&path=${encodeURIComponent(imgPath)}" alt="${result.image}" loading="lazy">
                 </div>
                 <div class="gallery-info">
                     <div class="gallery-name" title="${result.image}">${result.image}</div>
@@ -690,7 +754,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Run workflow action
     btnRun.addEventListener("click", async () => {
-        runTimestamp = Date.now(); // update cache-buster timestamp for new run
+        clearImageBlobCache();
         // Determine selected mode
         let selectedMode = "all";
         radioModes.forEach(r => {
@@ -807,7 +871,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             
                             item.innerHTML = `
                                 <div class="gallery-thumb">
-                                    <img src="/api/image?type=original&filename=${encodeURIComponent(result.image)}&path=${encodeURIComponent(imgPath)}&t=${runTimestamp}" alt="${result.image}" loading="lazy">
+                                    <img src="/api/image?type=original&filename=${encodeURIComponent(result.image)}&path=${encodeURIComponent(imgPath)}" alt="${result.image}" loading="lazy">
                                 </div>
                                 <div class="gallery-info">
                                     <div class="gallery-name" title="${result.image}">${result.image}</div>
@@ -831,6 +895,9 @@ document.addEventListener("DOMContentLoaded", () => {
                             const latestResult = resultsData[resultsData.length - 1];
                             displayResultDetails(latestResult);
                         }
+
+                        // Pre-cache all images in background as they finish processing
+                        precacheResultsImages(resultsData);
                     }
 
                     // 4. Handle process termination
