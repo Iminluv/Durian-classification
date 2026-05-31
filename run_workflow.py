@@ -13,12 +13,10 @@ from inference_sdk import InferenceHTTPClient
 CLASS_NAMES = ['crack', 'dark_spot', 'fungus', 'thorn_split']
 
 # Inputs
-TEST_IMAGES = "durian/test/images"
-TEST_LABELS = "durian/test/labels"
-VALID_IMAGES = "durian/valid/images"
-VALID_LABELS = "durian/valid/labels"
-OUTPUT_DIR = "output_images"
-RESULTS_FILE = "evaluation_results.json"
+TEST_IMAGES = os.environ.get("TEST_IMAGES", "durian/test/images")
+TEST_LABELS = os.environ.get("TEST_LABELS", "durian/test/labels")
+OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "output_images")
+RESULTS_FILE = os.environ.get("RESULTS_FILE", "evaluation_results.json")
 
 def get_gt_classes_names(label_path):
     """Read ground truth classes from YOLO txt file and return as list of strings."""
@@ -81,24 +79,26 @@ def run_workflow_evaluation():
     )
 
     test_image_paths = list(Path(TEST_IMAGES).glob("*.jpg"))
-    valid_image_paths = list(Path(VALID_IMAGES).glob("*.jpg"))
-    all_image_paths = test_image_paths + valid_image_paths
+    all_image_paths = test_image_paths
     
     if not all_image_paths:
-        print(f"No JPG images found in {TEST_IMAGES} or {VALID_IMAGES}")
+        print(f"No JPG images found in {TEST_IMAGES}")
         return
 
     # Parse execution mode
     mode = "all"
     single_image_name = None
+    num_n = 5
 
     if len(sys.argv) > 1:
         parser = argparse.ArgumentParser(description="Evaluate Roboflow Workflow for Durian Detection")
-        parser.add_argument("--mode", choices=["all", "single", "random", "random_multi"], default="all")
+        parser.add_argument("--mode", choices=["all", "single", "random", "random_multi", "random_n"], default="all")
         parser.add_argument("--image", type=str, help="Specific image filename (required for 'single' mode)")
+        parser.add_argument("--n", type=int, default=5, help="Number of images for 'random_n' mode")
         args = parser.parse_args()
         mode = args.mode
         single_image_name = args.image
+        num_n = args.n
     else:
         # Interactive mode
         print("\n=== SELECT EXECUTION MODE ===")
@@ -106,7 +106,8 @@ def run_workflow_evaluation():
         print("2. Evaluate a specific image")
         print("3. Evaluate a random image for testing")
         print("4. Evaluate a random image with > 1 expected classes")
-        choice = input("Select an option (1-4) [Default: 1]: ").strip()
+        print("5. Evaluate N random images")
+        choice = input("Select an option (1-5) [Default: 1]: ").strip()
         if choice == "2":
             mode = "single"
             single_image_name = input("Enter the image filename (e.g. test_image_01.jpg): ").strip()
@@ -114,6 +115,11 @@ def run_workflow_evaluation():
             mode = "random"
         elif choice == "4":
             mode = "random_multi"
+        elif choice == "5":
+            mode = "random_n"
+            n_val = input("Enter the number of images to evaluate [Default: 5]: ").strip()
+            if n_val.isdigit():
+                num_n = int(n_val)
         else:
             mode = "all"
 
@@ -125,7 +131,7 @@ def run_workflow_evaluation():
         # Filter images that have > 1 expected classes
         multi_class_images = []
         for p in all_image_paths:
-            lbl_dir = TEST_LABELS if "test" in p.parts else VALID_LABELS
+            lbl_dir = TEST_LABELS
             lbl_path = Path(lbl_dir) / (p.stem + ".txt")
             expected = get_gt_classes_names(lbl_path)
             if len(expected) > 1:
@@ -137,13 +143,17 @@ def run_workflow_evaluation():
         else:
             image_paths = [random.choice(multi_class_images)]
         print(f"\n[Test Mode] Randomly selected image with multiple classes: {image_paths[0].name}")
+    elif mode == "random_n":
+        sample_size = min(num_n, len(all_image_paths))
+        image_paths = random.sample(all_image_paths, sample_size)
+        print(f"\n[Test Mode] Randomly selected {sample_size} images")
     elif mode == "single":
         if not single_image_name:
             print("Error: Image filename must be specified for 'single' mode.")
             return
         matched = [p for p in all_image_paths if p.name == single_image_name or p.stem == single_image_name]
         if not matched:
-            print(f"Error: Image '{single_image_name}' not found in {TEST_IMAGES} or {VALID_IMAGES}.")
+            print(f"Error: Image '{single_image_name}' not found in {TEST_IMAGES}.")
             return
         image_paths = matched
         print(f"\n[Test Mode] Selected image: {image_paths[0].name}")
@@ -161,7 +171,7 @@ def run_workflow_evaluation():
     results_summary = []
 
     for idx, img_path in enumerate(image_paths, 1):
-        lbl_dir = TEST_LABELS if "test" in img_path.parts else VALID_LABELS
+        lbl_dir = TEST_LABELS
         label_path = Path(lbl_dir) / (img_path.stem + ".txt")
         expected = get_gt_classes_names(label_path)
 
@@ -283,7 +293,7 @@ def run_workflow_evaluation():
                 print("  Warning: No annotated_image output returned by the workflow.")
 
             # Record detailed results
-            results_summary.append({
+            new_result = {
                 "image": img_path.name,
                 "expected_classes": expected,
                 "hit_classes": hit_classes,
@@ -291,7 +301,32 @@ def run_workflow_evaluation():
                 "hit": hit,
                 "runtime_seconds": round(elapsed_time, 3),
                 "predictions": predictions_detailed
-            })
+            }
+            results_summary.append(new_result)
+
+            # Save intermediate results incrementally to support real-time UI tracking
+            try:
+                if mode in ["single", "random"] and os.path.exists(RESULTS_FILE):
+                    existing_results = []
+                    try:
+                        with open(RESULTS_FILE, "r") as f:
+                            existing_results = json.load(f)
+                            if not isinstance(existing_results, list):
+                                existing_results = []
+                    except Exception:
+                        pass
+                    
+                    # Merge current result
+                    existing_results = [r for r in existing_results if r.get("image") != new_result["image"]]
+                    existing_results.append(new_result)
+                    
+                    with open(RESULTS_FILE, "w") as f:
+                        json.dump(existing_results, f, indent=2)
+                else:
+                    with open(RESULTS_FILE, "w") as f:
+                        json.dump(results_summary, f, indent=2)
+            except Exception as e:
+                print(f"  Failed to save intermediate results: {e}")
 
         except Exception as e:
             import traceback
@@ -299,35 +334,6 @@ def run_workflow_evaluation():
             traceback.print_exc()
         
         print("-" * 60)
-
-    # Save results to a file
-    try:
-        # If in single/random mode, we merge with existing results if the file exists
-        existing_results = []
-        if mode in ["single", "random"] and os.path.exists(RESULTS_FILE):
-            try:
-                with open(RESULTS_FILE, "r") as f:
-                    existing_results = json.load(f)
-                    if not isinstance(existing_results, list):
-                        existing_results = []
-            except Exception:
-                pass
-            
-            # Update/append results
-            for new_res in results_summary:
-                # Remove duplicate entries for the same image
-                existing_results = [r for r in existing_results if r.get("image") != new_res["image"]]
-                existing_results.append(new_res)
-            
-            with open(RESULTS_FILE, "w") as f:
-                json.dump(existing_results, f, indent=2)
-        else:
-            with open(RESULTS_FILE, "w") as f:
-                json.dump(results_summary, f, indent=2)
-                
-        print(f"\nRecorded evaluation data to: {os.path.abspath(RESULTS_FILE)}")
-    except Exception as e:
-        print(f"Failed to save results to file: {e}")
 
     # Summary
     if total > 0:

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Durian Defect Workflow Runner</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+    <div class="app-container">
+        <header>
+            <div class="brand">
+                <span class="logo-emoji">🍈</span>
+                <div>
+                    <h1>Durian Defect Workflow Runner</h1>
+                    <div class="subtitle">Interactive Roboflow Inference Client Visualizer</div>
+                </div>
+            </div>
+            <div class="system-status" style="display: flex; gap: 10px; align-items: center;">
+                <button id="btn-toggle-config" class="badge" style="cursor: pointer; background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); font-family: var(--font-sans); outline: none; transition: var(--transition);">
+                    ⚙️ <span id="toggle-text">Show Config</span>
+                </button>
+                <span class="badge" id="status-badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border-glass);">Ready</span>
+            </div>
+        </header>
+
+        <main class="main-grid">
+            <!-- Sidebar Config Panel (Column 1 Drawer) -->
+            <div class="sidebar">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-glass); padding-bottom: 10px; margin-bottom: 15px;">
+                    <div class="panel-title" style="margin: 0; border: none; padding: 0;">
+                        <span>⚙️</span> Configuration
+                    </div>
+                    <button id="btn-close-config" style="background: none; border: none; color: var(--text-secondary); font-size: 1.6rem; cursor: pointer; line-height: 1; outline: none; font-weight: 700; transition: var(--transition);" title="Close Configuration">×</button>
+                </div>
+                    
+                    <!-- Paths Configuration -->
+                    <div class="form-group">
+                        <label for="images-path">Test Images Path</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="images-path" class="text-input" value="durian/test/images" placeholder="e.g. durian/test/images">
+                            <button id="btn-scan" class="text-input" style="width: auto; cursor: pointer; background: rgba(255,255,255,0.05); font-weight: 600;" title="Scan directory for images">Scan</button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="labels-path">Test Labels Path</label>
+                        <input type="text" id="labels-path" class="text-input" value="durian/test/labels" placeholder="e.g. durian/test/labels">
+                    </div>
+
+                    <!-- Mode Selector -->
+                    <div class="form-group" style="margin-top: 1.5rem;">
+                        <label>Execution Mode</label>
+                        <div class="mode-selector">
+                            <div class="mode-option active" data-mode="all">
+                                <input type="radio" name="exec-mode" id="mode-all" value="all" checked>
+                                <div class="mode-info">
+                                    <span class="mode-name">Evaluate All</span>
+                                    <span class="mode-desc">Evaluate all images in directory</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mode-option" data-mode="single">
+                                <input type="radio" name="exec-mode" id="mode-single" value="single">
+                                <div class="mode-info">
+                                    <span class="mode-name">Single Image</span>
+                                    <span class="mode-desc">Evaluate one specific image</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mode-option" data-mode="random">
+                                <input type="radio" name="exec-mode" id="mode-random" value="random">
+                                <div class="mode-info">
+                                    <span class="mode-name">Random Image</span>
+                                    <span class="mode-desc">Evaluate a randomly chosen image</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mode-option" data-mode="random_multi">
+                                <input type="radio" name="exec-mode" id="mode-random-multi" value="random_multi">
+                                <div class="mode-info">
+                                    <span class="mode-name">Random Multi-Class</span>
+                                    <span class="mode-desc">Image with > 1 defect types</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mode-option" data-mode="random_n">
+                                <input type="radio" name="exec-mode" id="mode-random-n" value="random_n">
+                                <div class="mode-info">
+                                    <span class="mode-name">Random N Images</span>
+                                    <span class="mode-desc">Evaluate N random images</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Conditional inputs -->
+                    <div id="single-image-control" class="conditional-control hidden">
+                        <label for="single-image-select">Select Image</label>
+                        <input list="images-list" id="single-image-select" class="text-input" placeholder="Search or type filename...">
+                        <datalist id="images-list"></datalist>
+                    </div>
+
+                    <div id="random-n-control" class="conditional-control hidden">
+                        <label for="random-n-count">Number of Images (N)</label>
+                        <input type="number" id="random-n-count" class="text-input" value="5" min="1" max="100">
+                    </div>
+
+                    <button id="btn-run" class="btn-run" style="margin-top: 1.5rem;">
+                        <span>🚀</span> Run Workflow
+                    </button>
+            </div>
+
+            <!-- Gallery Section (Column 2) -->
+            <div class="glass-card gallery-section">
+                <div class="panel-title" style="margin-bottom: 0.5rem;">
+                    <span>📷</span> Results Gallery
+                </div>
+                <div class="gallery-list" id="gallery-grid">
+                    <div style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+                        No images evaluated in this run yet. Run the workflow to see results.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Results Area (Column 3) -->
+            <div class="results-area">
+                <!-- Dashboard / Stats -->
+                <div class="dashboard-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-val" id="stat-total">-</div>
+                        <div class="stat-label">Total Evaluated</div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-val" id="stat-hits">-</div>
+                        <div class="stat-label">Total Hits</div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-val" id="stat-rate">-</div>
+                        <div class="stat-label">Hit Rate</div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-val" id="stat-runtime">-</div>
+                        <div class="stat-label">Avg Runtime</div>
+                    </div>
+                </div>
+
+                <!-- Side-by-Side Comparison Container -->
+                <div class="glass-card" id="comparison-card">
+                    <div class="comparison-container">
+                        <div class="comparison-header">
+                            <div>
+                                <div class="image-title" id="display-image-name">Select an image from results</div>
+                                <div class="subtitle" id="display-image-runtime">No runtime data</div>
+                            </div>
+                            <div id="display-hit-badge"></div>
+                        </div>
+
+                        <!-- Comparison Window -->
+                        <div class="comparison-window">
+                            <!-- Left Pane: Original -->
+                            <div class="image-pane">
+                                <div class="pane-label">Original Test Image (Ground Truth Overlay)</div>
+                                <div class="image-wrapper" id="original-image-wrapper">
+                                    <div class="placeholder-text">
+                                        <span class="placeholder-icon">🖼️</span>
+                                        <span>Original image will load here</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Right Pane: Annotated Output -->
+                            <div class="image-pane">
+                                <div class="pane-label">Annotated Workflow Output</div>
+                                <div class="image-wrapper" id="annotated-image-wrapper">
+                                    <div class="placeholder-text">
+                                        <span class="placeholder-icon">🤖</span>
+                                        <span>Annotated output will load here</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Details Panel (Labels and Predictions) -->
+                        <div class="details-panel" id="details-panel">
+                            <!-- Left: Ground Truth -->
+                            <div class="classes-list">
+                                <div class="class-group-title">Ground Truth Classes</div>
+                                <div class="tags-container" id="gt-classes-container">
+                                    <span class="tag">No data</span>
+                                </div>
+                                
+                                <div class="class-group-title" style="margin-top: 10px;">Hit Classes</div>
+                                <div class="tags-container" id="hit-classes-container">
+                                    <span class="tag">No data</span>
+                                </div>
+
+                                <div class="class-group-title" style="margin-top: 10px;">Missed Classes</div>
+                                <div class="tags-container" id="missed-classes-container">
+                                    <span class="tag">No data</span>
+                                </div>
+                            </div>
+
+                            <!-- Right: Predictions Table -->
+                            <div>
+                                <div class="class-group-title" style="margin-bottom: 8px;">Model Predictions</div>
+                                <div style="max-height: 150px; overflow-y: auto;">
+                                    <table class="pred-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Class</th>
+                                                <th>Confidence</th>
+                                                <th>BBox (x, y, w, h)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="predictions-table-body">
+                                            <tr>
+                                                <td colspan="3" style="text-align: center; color: var(--text-secondary); padding: 1rem;">No prediction data available</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Console Output for Subprocess logs -->
+                <div class="glass-card" style="padding: 1rem;">
+                    <div class="panel-title" style="margin-bottom: 0.5rem; font-size: 0.9rem;">
+                        <span>💻</span> Subprocess Execution Logs
+                    </div>
+                    <div class="console-log-container" id="console-logs">System ready. Waiting for execution...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
