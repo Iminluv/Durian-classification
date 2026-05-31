@@ -18,11 +18,12 @@ COPY workflow_app/ ./workflow_app/
 COPY run_workflow.py .
 COPY durian/test/ ./durian/test/
 
-# Create directories for outputs
-RUN mkdir -p output_images && chmod 777 output_images
+# Create directories for outputs and uploads
+RUN mkdir -p output_images uploads/images uploads/labels && chmod -R 777 output_images uploads
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
+ENV CLOUD_MODE=true
 
 # Expose port 7860 (Hugging Face Spaces default)
 EXPOSE 7860

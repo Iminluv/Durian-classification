@@ -43,6 +43,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const galleryGrid = document.getElementById("gallery-grid");
     const consoleLogs = document.getElementById("console-logs");
     
+    // Upload elements
+    const uploadZone = document.getElementById("upload-zone");
+    const uploadFileInput = document.getElementById("upload-file-input");
+    const uploadProgressContainer = document.getElementById("upload-progress-container");
+    const uploadProgressFill = document.getElementById("upload-progress-fill");
+    const uploadProgressStatus = document.getElementById("upload-progress-status");
+    const uploadProgressPercent = document.getElementById("upload-progress-percent");
+    const uploadedFilesBadge = document.getElementById("uploaded-files-badge");
+    const btnClearUploads = document.getElementById("btn-clear-uploads");
+    
     // Application state
     let resultsList = [];
     let currentSelectedImage = null;
@@ -194,9 +204,163 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
     
+    // Check configuration on startup
+    async function checkServerConfig() {
+        try {
+            const response = await fetch("/api/config");
+            if (response.ok) {
+                const config = await response.json();
+                if (config.cloud_mode) {
+                    document.body.classList.add("cloud-mode");
+                    logToConsole("Cloud mode active. Path inputs hidden, local upload enabled.", "info");
+                } else {
+                    document.body.classList.remove("cloud-mode");
+                    logToConsole("Local mode active. Custom directory scanning enabled.", "info");
+                }
+            }
+        } catch (e) {
+            console.error("Failed to check server configuration", e);
+        }
+    }
+
+    // Setup file upload handlers
+    if (uploadZone && uploadFileInput) {
+        uploadZone.addEventListener("click", () => {
+            uploadFileInput.click();
+        });
+
+        uploadFileInput.addEventListener("change", (e) => {
+            if (e.target.files.length > 0) {
+                uploadFiles(e.target.files);
+            }
+        });
+
+        // Drag and drop event handlers
+        ["dragenter", "dragover"].forEach(eventName => {
+            uploadZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadZone.classList.add("drag-active");
+            }, false);
+        });
+
+        ["dragleave", "drop"].forEach(eventName => {
+            uploadZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadZone.classList.remove("drag-active");
+            }, false);
+        });
+
+        uploadZone.addEventListener("drop", (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                uploadFiles(files);
+            }
+        });
+    }
+
+    async function uploadFiles(files) {
+        const formData = new FormData();
+        for (let i = 0; i < files.length; i++) {
+            formData.append("files", files[i]);
+        }
+
+        // Show progress bar
+        uploadProgressContainer.classList.remove("hidden");
+        uploadProgressFill.style.width = "0%";
+        uploadProgressPercent.textContent = "0%";
+        uploadProgressStatus.textContent = `Uploading ${files.length} file(s)...`;
+        logToConsole(`Uploading ${files.length} file(s)...`, "info");
+
+        try {
+            // We use XMLHttpRequest to track upload progress in real-time
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "/api/upload", true);
+
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    uploadProgressFill.style.width = `${percent}%`;
+                    uploadProgressPercent.textContent = `${percent}%`;
+                }
+            };
+
+            xhr.onload = async () => {
+                uploadProgressContainer.classList.add("hidden");
+                if (xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    logToConsole(`Successfully uploaded ${response.count} files!`, "success");
+                    
+                    // Switch paths to upload dirs
+                    imagesPathInput.value = "uploads/images";
+                    labelsPathInput.value = "uploads/labels";
+                    
+                    // Update badges
+                    uploadedFilesBadge.style.display = "inline-flex";
+                    uploadedFilesBadge.textContent = `${response.uploaded.filter(f => !f.endsWith('.txt')).length} custom images`;
+                    btnClearUploads.style.display = "inline-flex";
+                    
+                    // Scan uploaded directory and trigger load
+                    await scanImages();
+                } else {
+                    logToConsole(`Upload failed with status: ${xhr.status}`, "error");
+                    alert("Upload failed. Check logs.");
+                }
+            };
+
+            xhr.onerror = () => {
+                uploadProgressContainer.classList.add("hidden");
+                logToConsole("Upload encountered a network error.", "error");
+                alert("Upload failed due to network error.");
+            };
+
+            xhr.send(formData);
+
+        } catch (err) {
+            uploadProgressContainer.classList.add("hidden");
+            logToConsole(`Upload error: ${err.message}`, "error");
+        }
+    }
+
+    // Clear uploads button handler
+    if (btnClearUploads) {
+        btnClearUploads.addEventListener("click", async () => {
+            if (!confirm("Are you sure you want to clear all custom uploaded files?")) {
+                return;
+            }
+            
+            try {
+                const response = await fetch("/api/uploads", { method: "DELETE" });
+                if (response.ok) {
+                    const data = await response.json();
+                    logToConsole(`Cleared all uploaded files (deleted ${data.deleted_count} files).`, "success");
+                    
+                    // Reset paths to default
+                    imagesPathInput.value = "durian/test/images";
+                    labelsPathInput.value = "durian/test/labels";
+                    
+                    // Hide badges
+                    uploadedFilesBadge.style.display = "none";
+                    btnClearUploads.style.display = "none";
+                    
+                    // Re-scan
+                    await scanImages();
+                } else {
+                    throw new Error("Failed to clear uploads");
+                }
+            } catch (e) {
+                logToConsole(e.message, "error");
+            }
+        });
+    }
+
     // Initial scan and load previous results on load
-    scanImages().then(() => {
-        loadPreviousResults();
+    checkServerConfig().then(() => {
+        scanImages().then(() => {
+            loadPreviousResults();
+        });
     });
 
     // Reset results dashboard and main views

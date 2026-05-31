@@ -78,7 +78,9 @@ def run_workflow_evaluation():
         api_key=api_key
     )
 
-    test_image_paths = list(Path(TEST_IMAGES).glob("*.jpg"))
+    test_image_paths = []
+    for ext in ["*.jpg", "*.jpeg", "*.png", "*.JPG", "*.JPEG", "*.PNG"]:
+        test_image_paths.extend(Path(TEST_IMAGES).glob(ext))
     all_image_paths = test_image_paths
     
     if not all_image_paths:
@@ -175,9 +177,10 @@ def run_workflow_evaluation():
         label_path = Path(lbl_dir) / (img_path.stem + ".txt")
         expected = get_gt_classes_names(label_path)
 
-        if not expected:
-            # Skip unannotated images if any
-            continue
+        # Do not skip unannotated files to support custom image uploads
+        # if not expected:
+        #     # Skip unannotated images if any
+        #     continue
 
         print(f"[{idx}/{len(image_paths)}] Processing: {img_path.name}")
         print(f"  Expected classes: {expected}")

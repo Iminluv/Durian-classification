@@ -4,8 +4,8 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional
-from fastapi import FastAPI, HTTPException, Query
+from typing import Optional, List
+from fastapi import FastAPI, HTTPException, Query, UploadFile, File
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -40,20 +40,90 @@ class RunWorkflowRequest(BaseModel):
     labels_path: Optional[str] = "durian/test/labels"
 
 def get_absolute_path(path_str: str) -> Path:
-    """Helper to resolve paths relative to PROJECT_ROOT if not absolute."""
+    """Helper to resolve paths relative to PROJECT_ROOT if not absolute, guarding against path traversal."""
     path = Path(path_str)
     if not path.is_absolute():
         path = PROJECT_ROOT / path
-    return path.resolve()
+    resolved = path.resolve()
+    # Guard against path traversal outside PROJECT_ROOT
+    try:
+        resolved.relative_to(PROJECT_ROOT)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Access denied: Path traversal detected.")
+    return resolved
+
+@app.get("/api/config")
+def get_config():
+    """Get server configuration, including whether we are in cloud mode."""
+    cloud_mode = os.environ.get("CLOUD_MODE", "false").lower() in ("true", "1", "yes")
+    return {
+        "cloud_mode": cloud_mode
+    }
+
+@app.post("/api/upload")
+async def upload_files(files: List[UploadFile] = File(...)):
+    """Upload image files and optional label files."""
+    images_dir = get_absolute_path("uploads/images")
+    labels_dir = get_absolute_path("uploads/labels")
+    
+    images_dir.mkdir(parents=True, exist_ok=True)
+    labels_dir.mkdir(parents=True, exist_ok=True)
+    
+    uploaded_files = []
+    
+    for file in files:
+        if not file.filename:
+            continue
+        
+        filename = Path(file.filename).name  # Prevent directory traversal in filename
+        file_ext = Path(filename).suffix.lower()
+        
+        if file_ext in [".jpg", ".jpeg", ".png"]:
+            dest_path = images_dir / filename
+            with open(dest_path, "wb") as f:
+                shutil.copyfileobj(file.file, f)
+            uploaded_files.append(filename)
+            
+            # Auto-generate empty label file if it does not exist
+            label_filename = f"{Path(filename).stem}.txt"
+            label_path = labels_dir / label_filename
+            if not label_path.exists():
+                with open(label_path, "w") as lf:
+                    pass
+                    
+        elif file_ext == ".txt":
+            dest_path = labels_dir / filename
+            with open(dest_path, "wb") as f:
+                shutil.copyfileobj(file.file, f)
+            uploaded_files.append(filename)
+            
+    return {"uploaded": uploaded_files, "count": len(uploaded_files)}
+
+@app.delete("/api/uploads")
+def clear_uploads():
+    """Clear all files in the uploads/ directory."""
+    images_dir = get_absolute_path("uploads/images")
+    labels_dir = get_absolute_path("uploads/labels")
+    
+    deleted_count = 0
+    for d in [images_dir, labels_dir]:
+        if d.exists() and d.is_dir():
+            for item in d.iterdir():
+                if item.is_file():
+                    item.unlink()
+                    deleted_count += 1
+    return {"success": True, "deleted_count": deleted_count}
 
 @app.get("/api/images")
 def list_images(images_path: str = "durian/test/images"):
-    """List all JPG images in the specified directory."""
+    """List all supported images in the specified directory."""
     abs_path = get_absolute_path(images_path)
     if not abs_path.exists() or not abs_path.is_dir():
         raise HTTPException(status_code=404, detail=f"Images directory not found: {images_path}")
     
-    images = [p.name for p in abs_path.glob("*.jpg")]
+    images = []
+    for ext in ["*.jpg", "*.jpeg", "*.png", "*.JPG", "*.JPEG", "*.PNG"]:
+        images.extend(p.name for p in abs_path.glob(ext))
     images.sort()
     return {"images": images, "count": len(images)}
 

@@ -29,3 +29,7 @@ runs/
 # Allow durian/test to be tracked for cloud deployment
 !durian/test/
 
+# Logs and Uploads
+*.log
+uploads/
+
