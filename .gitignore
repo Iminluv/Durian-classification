@@ -1,4 +1,5 @@
-durian
+durian/*
+!durian/test/
 durian-2
 output_images
 
@@ -24,3 +25,7 @@ runs/
 *.xml
 *.bin
 *.mlpackage
+
+# Allow durian/test to be tracked for cloud deployment
+!durian/test/
+
