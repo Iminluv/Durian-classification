@@ -205,9 +205,49 @@ def get_image(
     path: Optional[str] = "durian/test/images"
 ):
     """Serve an original or annotated image file."""
+    print(f"[API Log] Requesting image: {filename} (Type: {type}, Client Path: {path})")
+    
+    # Sanitize filename to prevent path traversal
+    filename = Path(filename).name
+    
     if type == "original":
-        img_dir = get_absolute_path(path)
-        img_path = img_dir / filename
+        img_path = None
+        
+        # 1. Try client-supplied path first
+        try:
+            img_dir = get_absolute_path(path)
+            candidate = img_dir / filename
+            if candidate.exists() and candidate.is_file():
+                img_path = candidate
+        except Exception:
+            pass
+            
+        # 2. Try uploads directory fallback
+        if not img_path:
+            try:
+                uploads_dir = get_absolute_path("uploads/images")
+                candidate = uploads_dir / filename
+                if candidate.exists() and candidate.is_file():
+                    print(f"[API Log] Found image in uploads fallback: {candidate}")
+                    img_path = candidate
+            except Exception:
+                pass
+            
+        # 3. Try test dataset fallback
+        if not img_path:
+            try:
+                test_dir = get_absolute_path("durian/test/images")
+                candidate = test_dir / filename
+                if candidate.exists() and candidate.is_file():
+                    print(f"[API Log] Found image in test dataset fallback: {candidate}")
+                    img_path = candidate
+            except Exception:
+                pass
+
+        if not img_path:
+            print(f"[API Log] Image not found anywhere: {filename}")
+            raise HTTPException(status_code=404, detail=f"Image {filename} not found")
+        
     else:
         # Annotated images are stored in output_images/
         img_dir = get_absolute_path("output_images")
@@ -217,10 +257,12 @@ def get_image(
         if not img_path.exists():
             img_path = img_dir / filename
 
-    if not img_path.exists():
-        raise HTTPException(status_code=404, detail=f"Image {filename} ({type}) not found at {img_path}")
-        
-    # Enable aggressive caching to avoid reloading over slow cloud/tunnels
+        if not img_path.exists():
+            print(f"[API Log] Annotated image not found: {filename}")
+            raise HTTPException(status_code=404, detail=f"Annotated image {filename} not found")
+            
+    # Enable cache revalidation to avoid reloading unchanged images over slow tunnels,
+    # while immediately updating when the workflow runs again or new uploads occur.
     headers = {
         "Cache-Control": "public, max-age=86400, must-revalidate"
     }
