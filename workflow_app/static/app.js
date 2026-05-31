@@ -58,6 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentSelectedImage = null;
     let availableImages = [];
     let userSelectedImage = false;
+    let currentRunTimestamp = Date.now();
 
     // Helper to log to the console log component
     function logToConsole(message, type = "info") {
@@ -297,6 +298,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     imagesPathInput.value = "uploads/images";
                     labelsPathInput.value = "uploads/labels";
                     
+                    // Update cache buster timestamp for uploaded images
+                    currentRunTimestamp = Date.now();
+                    
                     // Update badges
                     uploadedFilesBadge.style.display = "inline-flex";
                     uploadedFilesBadge.textContent = `${response.uploaded.filter(f => !f.endsWith('.txt')).length} custom images`;
@@ -432,14 +436,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Set Images
         const imgPath = imagesPathInput.value.trim();
-        const originalImgUrl = `/api/image?type=original&filename=${encodeURIComponent(result.image)}&path=${encodeURIComponent(imgPath)}`;
+        const originalImgUrl = `/api/image?type=original&filename=${encodeURIComponent(result.image)}&path=${encodeURIComponent(imgPath)}&t=${currentRunTimestamp}`;
         
         originalImageWrapper.innerHTML = `
             <img src="${originalImgUrl}" alt="Original image" id="original-img-el" style="max-width: 100%; max-height: 100%; object-fit: contain;">
             <div id="original-bbox-container" style="position: absolute; pointer-events: none; z-index: 10;"></div>
         `;
         
-        annotatedImageWrapper.innerHTML = `<img src="/api/image?type=annotated&filename=${encodeURIComponent(result.image)}" alt="Annotated workflow output">`;
+        annotatedImageWrapper.innerHTML = `<img src="/api/image?type=annotated&filename=${encodeURIComponent(result.image)}&t=${currentRunTimestamp}" alt="Annotated workflow output">`;
 
         const originalImgEl = document.getElementById("original-img-el");
         const originalContainer = document.getElementById("original-bbox-container");
@@ -665,7 +669,7 @@ document.addEventListener("DOMContentLoaded", () => {
             
             item.innerHTML = `
                 <div class="gallery-thumb">
-                    <img src="/api/image?type=original&filename=${encodeURIComponent(result.image)}&path=${encodeURIComponent(imgPath)}" alt="${result.image}" loading="lazy">
+                    <img src="/api/image?type=original&filename=${encodeURIComponent(result.image)}&path=${encodeURIComponent(imgPath)}&t=${currentRunTimestamp}" alt="${result.image}" loading="lazy">
                 </div>
                 <div class="gallery-info">
                     <div class="gallery-name" title="${result.image}">${result.image}</div>
@@ -730,6 +734,9 @@ document.addEventListener("DOMContentLoaded", () => {
         statusBadge.style.background = "var(--color-warning-bg)";
         statusBadge.style.color = "var(--color-warning)";
         statusBadge.style.borderColor = "rgba(255, 193, 7, 0.3)";
+        
+        // Update cache buster timestamp for the new run
+        currentRunTimestamp = Date.now();
         
         logToConsole("Triggering durian defect classifier workflow runner in background...", "clear");
         logToConsole(`Mode: ${selectedMode} | Images Path: ${imagesPath} | Labels Path: ${labelsPath}`, "info");
@@ -805,7 +812,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             
                             item.innerHTML = `
                                 <div class="gallery-thumb">
-                                    <img src="/api/image?type=original&filename=${encodeURIComponent(result.image)}&path=${encodeURIComponent(imgPath)}" alt="${result.image}" loading="lazy">
+                                    <img src="/api/image?type=original&filename=${encodeURIComponent(result.image)}&path=${encodeURIComponent(imgPath)}&t=${currentRunTimestamp}" alt="${result.image}" loading="lazy">
                                 </div>
                                 <div class="gallery-info">
                                     <div class="gallery-name" title="${result.image}">${result.image}</div>

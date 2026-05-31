@@ -4,6 +4,8 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+import cv2
+import numpy as np
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException, Query, UploadFile, File
 from fastapi.responses import FileResponse, JSONResponse
@@ -81,10 +83,42 @@ async def upload_files(files: List[UploadFile] = File(...)):
         
         if file_ext in [".jpg", ".jpeg", ".png"]:
             dest_path = images_dir / filename
-            print(f"[API Log] Saving image: {filename} to {dest_path}")
-            with open(dest_path, "wb") as f:
-                shutil.copyfileobj(file.file, f)
-            uploaded_files.append(filename)
+            print(f"[API Log] Processing image: {filename}...")
+            try:
+                # Read bytes and decode
+                file_bytes = await file.read()
+                nparr = np.frombuffer(file_bytes, np.uint8)
+                img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                
+                if img is not None:
+                    # Downscale if width or height exceeds 1024px (for fast network transfer and quick inference)
+                    h, w = img.shape[:2]
+                    max_size = 1024
+                    if max(h, w) > max_size:
+                        scale = max_size / max(h, w)
+                        new_w = int(w * scale)
+                        new_h = int(h * scale)
+                        img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
+                        print(f"[API Log] Resized {filename} from {w}x{h} to {new_w}x{new_h} for performance")
+                    
+                    cv2.imwrite(str(dest_path), img)
+                    uploaded_files.append(filename)
+                else:
+                    # Fallback to copy raw file if cv2 decoding fails
+                    print(f"[API Log] cv2 decode failed for {filename}. Copying raw stream.")
+                    file.file.seek(0)
+                    with open(dest_path, "wb") as f:
+                        shutil.copyfileobj(file.file, f)
+                    uploaded_files.append(filename)
+            except Exception as e:
+                print(f"[API Log] Error processing image {filename}: {e}. Falling back to raw save.")
+                try:
+                    file.file.seek(0)
+                    with open(dest_path, "wb") as f:
+                        shutil.copyfileobj(file.file, f)
+                    uploaded_files.append(filename)
+                except Exception as ex:
+                    print(f"[API Log] Critical fallback save error for {filename}: {ex}")
             
             # Auto-generate empty label file if it does not exist
             label_filename = f"{Path(filename).stem}.txt"
@@ -204,7 +238,7 @@ def get_image(
     filename: str = Query(...),
     path: Optional[str] = "durian/test/images"
 ):
-    """Serve an original or annotated image file."""
+    """Serve an original or annotated image file with browser caching enabled for speed."""
     if type == "original":
         img_dir = get_absolute_path(path)
         img_path = img_dir / filename
@@ -220,7 +254,12 @@ def get_image(
     if not img_path.exists():
         raise HTTPException(status_code=404, detail=f"Image {filename} ({type}) not found at {img_path}")
         
-    return FileResponse(img_path)
+    return FileResponse(
+        img_path, 
+        headers={
+            "Cache-Control": "public, max-age=86400"  # Cache for 24 hours, busted by frontend query timestamp
+        }
+    )
 
 @app.get("/api/results")
 def get_results(results_file: str = "evaluation_results.json", labels_path: str = "durian/test/labels"):
