@@ -27,6 +27,46 @@ def get_gt_classes_names(label_path):
     # Return class names (removing duplicates)
     return list(set(CLASS_NAMES[cid] for cid in class_ids if cid < len(CLASS_NAMES)))
 
+def get_image_size(img_path):
+    """Return (width, height) in pixels using PIL, or (None, None) on failure."""
+    try:
+        from PIL import Image
+        with Image.open(img_path) as im:
+            return im.size  # (width, height)
+    except Exception as e:
+        print(f"  Warning: could not read image size for {img_path}: {e}")
+        return None, None
+
+def get_gt_boxes(label_path, img_width, img_height):
+    """Read ground truth boxes from a YOLO txt file and return them in absolute-pixel,
+    center-xywh format (matching the coordinate convention Roboflow predictions use),
+    so predicted and ground-truth boxes can later be compared with IoU.
+
+    Each box: {"class": str, "x": float, "y": float, "width": float, "height": float}
+    x, y are the box CENTER in pixels; width, height are the box size in pixels.
+    Returns [] if the label file is missing or image dimensions could not be read.
+    """
+    boxes = []
+    if not os.path.exists(label_path) or img_width is None or img_height is None:
+        return boxes
+    with open(label_path) as f:
+        for line in f:
+            parts = line.split()
+            if len(parts) < 5:
+                continue
+            cid = int(parts[0])
+            if cid >= len(CLASS_NAMES):
+                continue
+            xc, yc, w, h = (float(v) for v in parts[1:5])
+            boxes.append({
+                "class": CLASS_NAMES[cid],
+                "x": xc * img_width,
+                "y": yc * img_height,
+                "width": w * img_width,
+                "height": h * img_height,
+            })
+    return boxes
+
 def extract_base64_string(data):
     """Recursively search for a base64 string in any nested dict/list/string structure."""
     if isinstance(data, str):
@@ -180,6 +220,12 @@ def run_workflow_evaluation():
         # default to all classes so the workflow does not filter out predictions
         workflow_expected = expected if expected else CLASS_NAMES
 
+        # Ground-truth boxes in absolute pixels, for IoU-based metrics (mAP, confusion
+        # matrix, precision/recall) computed later by compute_benchmarks.py. This does
+        # NOT change hit/miss logic below -- it's additional data captured alongside it.
+        img_w, img_h = get_image_size(img_path)
+        gt_boxes = get_gt_boxes(label_path, img_w, img_h)
+
         # Do not skip unannotated files to support custom image uploads
         # if not expected:
         #     # Skip unannotated images if any
@@ -306,7 +352,10 @@ def run_workflow_evaluation():
                 "missed_classes": missed,
                 "hit": hit,
                 "runtime_seconds": round(elapsed_time, 3),
-                "predictions": predictions_detailed
+                "predictions": predictions_detailed,
+                "gt_boxes": gt_boxes,
+                "image_width": img_w,
+                "image_height": img_h
             }
             results_summary.append(new_result)
 

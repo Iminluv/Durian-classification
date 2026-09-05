@@ -1,0 +1,119 @@
+{
+  "iou_threshold": 0.5,
+  "grouped_fungus_dark_spot": false,
+  "per_class": {
+    "crack": {
+      "precision": 0.5204081632653061,
+      "recall": 0.5862068965517241,
+      "f1": 0.5513513513513514,
+      "ap": 0.38489247080158945,
+      "tp": 51,
+      "fp": 47,
+      "fn": 36,
+      "n_gt": 87
+    },
+    "dark_spot": {
+      "precision": 0.37037037037037035,
+      "recall": 0.24390243902439024,
+      "f1": 0.2941176470588235,
+      "ap": 0.12601094638397362,
+      "tp": 10,
+      "fp": 17,
+      "fn": 31,
+      "n_gt": 41
+    },
+    "fungus": {
+      "precision": 0.34782608695652173,
+      "recall": 0.36923076923076925,
+      "f1": 0.35820895522388063,
+      "ap": 0.26383148659967887,
+      "tp": 24,
+      "fp": 45,
+      "fn": 41,
+      "n_gt": 65
+    },
+    "thorn_split": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "ap": 0.0,
+      "tp": 0,
+      "fp": 68,
+      "fn": 65,
+      "n_gt": 65
+    }
+  },
+  "overall": {
+    "micro_precision": 0.3244274809160305,
+    "micro_recall": 0.32945736434108525,
+    "micro_f1": 0.32692307692307687,
+    "macro_precision": 0.30965115514804953,
+    "macro_recall": 0.29983502620172087,
+    "macro_f1": 0.3009194884085139,
+    "mAP@0.5": 0.1936837259463105
+  },
+  "confusion_matrix": {
+    "labels": [
+      "crack",
+      "dark_spot",
+      "fungus",
+      "thorn_split",
+      "background"
+    ],
+    "matrix": {
+      "crack": {
+        "crack": 51,
+        "dark_spot": 0,
+        "fungus": 0,
+        "thorn_split": 0,
+        "background": 36
+      },
+      "dark_spot": {
+        "crack": 0,
+        "dark_spot": 9,
+        "fungus": 4,
+        "thorn_split": 0,
+        "background": 28
+      },
+      "fungus": {
+        "crack": 0,
+        "dark_spot": 0,
+        "fungus": 24,
+        "thorn_split": 0,
+        "background": 41
+      },
+      "thorn_split": {
+        "crack": 0,
+        "dark_spot": 0,
+        "fungus": 0,
+        "thorn_split": 0,
+        "background": 65
+      },
+      "background": {
+        "crack": 47,
+        "dark_spot": 18,
+        "fungus": 41,
+        "thorn_split": 68,
+        "background": 0
+      }
+    }
+  },
+  "model_checkpoint": {
+    "file": "best.pt",
+    "architecture": "YOLO26n (End-to-End)",
+    "parameters": 2505360,
+    "size_mb": 5.14,
+    "input_resolution": [640, 640],
+    "epochs_trained": 50,
+    "classes": ["crack", "dark_spot", "fungus", "thorn_split"],
+    "metrics": {
+      "mAP@0.5": 0.69884,
+      "mAP@0.5:0.95": 0.40995,
+      "precision": 0.66754,
+      "recall": 0.65616,
+      "box_loss": 1.30996,
+      "cls_loss": 1.34195,
+      "l1_loss": 0.01869
+    }
+  }
+}

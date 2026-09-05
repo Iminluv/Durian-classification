@@ -1,0 +1,79 @@
+{
+  "iou_threshold": 0.5,
+  "grouped_fungus_dark_spot": true,
+  "per_class": {
+    "crack": {
+      "precision": 0.5204081632653061,
+      "recall": 0.5862068965517241,
+      "f1": 0.5513513513513514,
+      "ap": 0.38489247080158945,
+      "tp": 51,
+      "fp": 47,
+      "fn": 36,
+      "n_gt": 87
+    },
+    "fungus_or_dark_spot": {
+      "precision": 0.3854166666666667,
+      "recall": 0.3490566037735849,
+      "f1": 0.36633663366336633,
+      "ap": 0.20865215791857442,
+      "tp": 37,
+      "fp": 59,
+      "fn": 69,
+      "n_gt": 106
+    },
+    "thorn_split": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "ap": 0.0,
+      "tp": 0,
+      "fp": 68,
+      "fn": 65,
+      "n_gt": 65
+    }
+  },
+  "overall": {
+    "micro_precision": 0.33587786259541985,
+    "micro_recall": 0.34108527131782945,
+    "micro_f1": 0.3384615384615384,
+    "macro_precision": 0.3019416099773243,
+    "macro_recall": 0.3117545001084363,
+    "macro_f1": 0.3058959950049059,
+    "mAP@0.5": 0.19784820957338797
+  },
+  "confusion_matrix": {
+    "labels": [
+      "crack",
+      "fungus_or_dark_spot",
+      "thorn_split",
+      "background"
+    ],
+    "matrix": {
+      "crack": {
+        "crack": 51,
+        "fungus_or_dark_spot": 0,
+        "thorn_split": 0,
+        "background": 36
+      },
+      "fungus_or_dark_spot": {
+        "crack": 0,
+        "fungus_or_dark_spot": 37,
+        "thorn_split": 0,
+        "background": 69
+      },
+      "thorn_split": {
+        "crack": 0,
+        "fungus_or_dark_spot": 0,
+        "thorn_split": 0,
+        "background": 65
+      },
+      "background": {
+        "crack": 47,
+        "fungus_or_dark_spot": 59,
+        "thorn_split": 68,
+        "background": 0
+      }
+    }
+  }
+}

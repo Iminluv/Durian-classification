@@ -95,6 +95,7 @@ pip install -r requirements.txt
 |---|---|
 | [How to Run Guide](file:///Users/iminluv/Documents/Durian-classification/docs/how_to_run.md) | Comprehensive step-by-step setup, run instructions, and troubleshooting guide. |
 | [Architecture Specification](file:///Users/iminluv/Documents/Durian-classification/docs/architecture.md) | System design, hardware integrations, multi-runtime vision engine, and API protocols. |
+| [Workflow & Architecture Diagrams](file:///Users/iminluv/Documents/Durian-classification/docs/diagrams/README.md) | User flows, sequence diagrams, UML class & use case diagrams, and state machines. |
 | [Operator Guide (English)](file:///Users/iminluv/Documents/Durian-classification/docs/user_guide_en.md) | Detailed operator manual for desktop & web UI, batch management, and reports. |
 | [Operator Guide (Vietnamese)](file:///Users/iminluv/Documents/Durian-classification/docs/user_guide_vi.md) | Tài liệu hướng dẫn vận hành hệ thống phân loại sầu riêng bằng tiếng Việt. |
 

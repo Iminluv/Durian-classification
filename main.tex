@@ -1,0 +1,635 @@
+\documentclass[12pt, a4paper]{article}
+
+% Packages
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{parskip}
+\usepackage{microtype}
+\usepackage{tcolorbox}
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setmainlanguage{vietnamese}
+\setmainfont{DejaVu Serif}
+\setsansfont{DejaVu Sans}
+\setmonofont{DejaVu Sans Mono}
+\tcbuselibrary{skins, breakable}
+
+% Colors
+\definecolor{primary}{RGB}{79, 70, 229}
+\definecolor{success}{RGB}{22, 163, 74}
+\definecolor{warning}{RGB}{217, 119, 6}
+\definecolor{danger}{RGB}{220, 38, 38}
+\definecolor{lightgray}{RGB}{248, 248, 250}
+\definecolor{darkgray}{RGB}{55, 65, 81}
+\definecolor{tabheader}{RGB}{237, 233, 254}
+\definecolor{rowhighlight}{RGB}{249, 250, 251}
+
+% Page style
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{darkgray} Hệ Thống Phân Loại Sầu Riêng}
+\fancyhead[R]{\small\color{darkgray} Báo Cáo Đánh Giá Mô Hình}
+\fancyfoot[C]{\small\color{darkgray}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+% Section formatting
+\titleformat{\section}{\large\bfseries\color{primary}}{}{0em}{}[\color{primary}\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries\color{darkgray}}{}{0em}{}
+\titlespacing{\section}{0pt}{18pt}{8pt}
+\titlespacing{\subsection}{0pt}{12pt}{4pt}
+
+% Custom column types
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
+
+% Status commands
+\newcommand{\pass}{\textcolor{success}{\textbf{ĐẠT}}}
+\newcommand{\marginal}{\textcolor{warning}{\textbf{ĐẠT (sát ngưỡng)}}}
+\newcommand{\notapplicable}{\textcolor{warning}{\textbf{N/A -- hoãn lại}}}
+\newcommand{\fail}{\textcolor{danger}{\textbf{KHÔNG ĐẠT}}}
+
+% Highlight box
+\tcbset{
+  kpibox/.style={
+    enhanced, breakable,
+    colback=tabheader,
+    colframe=primary,
+    boxrule=0.8pt,
+    arc=4pt,
+    left=8pt, right=8pt, top=6pt, bottom=6pt,
+  },
+  warnbox/.style={
+    enhanced,
+    colback=yellow!10,
+    colframe=warning,
+    boxrule=0.8pt,
+    arc=4pt,
+    left=8pt, right=8pt, top=6pt, bottom=6pt,
+  },
+  notebox/.style={
+    enhanced,
+    colback=lightgray,
+    colframe=darkgray!40,
+    boxrule=0.5pt,
+    arc=4pt,
+    left=8pt, right=8pt, top=6pt, bottom=6pt,
+  }
+}
+
+% ─────────────────────────────────────────────
+\begin{document}
+
+% Trang bìa
+\begin{titlepage}
+  \centering
+  \vspace*{2cm}
+
+  {\color{primary}\rule{\linewidth}{2pt}}
+  \vspace{0.5cm}
+
+  {\Huge\bfseries Hệ Thống Phát Hiện Lỗi Sầu Riêng}\\[0.4cm]
+  {\Large\bfseries Báo Cáo Đánh Giá Mô Hình}\\[0.2cm]
+  {\large\color{darkgray} Đánh Giá Ngưỡng KPI}
+
+  \vspace{0.5cm}
+  {\color{primary}\rule{\linewidth}{2pt}}
+
+  \vspace{1.5cm}
+
+  \begin{tabular}{L{4.5cm} L{7cm}}
+    \textbf{Dự án}           & Hệ Thống Phân Loại Sầu Riêng Tự Động \\[4pt]
+    \textbf{Gói dịch vụ}     & Starter Package \\[4pt]
+    \textbf{Mô hình}         & YOLOv26n (Phát Hiện Đối Tượng) \\[4pt]
+    \textbf{Nền tảng}        & Roboflow Cloud Inference \\[4pt]
+    \textbf{Bộ dữ liệu}      & durian -- Roboflow Workspace \\[4pt]
+    \textbf{Ngày}            & 26 tháng 5, 2026 (cập nhật: bổ sung Mục 8, 9 \& checkpoint best.pt) \\[4pt]
+    \textbf{Phiên bản}       & v1.3 \\
+  \end{tabular}
+
+\end{titlepage}
+
+% ─────────────────────────────────────────────
+\section{Tóm Tắt}
+
+Mục tiêu của mô hình là để phát hiện những lỗi hỏng phổ biến trên sầu riêng loại C và D (hàng lỗi, hàng dạt, chất lượng thấp) nhằm tách biệt với loại A và B (loại chất lượng cao để xuất khẩu, có giá cao, chỉ phân biệt qua số hộc và độ tròn méo của quả). Mô hình dựa trên YOLOv26n được đánh giá trên bộ kiểm thử gồm \textbf{138 ảnh có nhãn} thuộc 4 lớp lỗi. Phương pháp đánh giá sử dụng \textbf{tỷ lệ phát hiện cấp ảnh} làm chỉ số chính: một ảnh được tính là phát hiện đúng chỉ khi mô hình phát hiện \textit{tất cả} các lớp lỗi có mặt trong ảnh đó.
+
+\begin{tcolorbox}[notebox]
+\textbf{Lưu ý về phương pháp đánh giá:} \texttt{fungus} (nấm mốc) và \texttt{dark\_spot} (đốm đen) được xem là cùng một nhóm khi tính tỷ lệ phát hiện. Lí do là vì loại nấm mốc này là nguyên nhân chủ yếu gây ra phần thâm, thối ở quả sầu riêng; nên việc loại nấm mốc này mọc trên phần thâm và gây nhầm lẫn khi dự đoán có khả năng tương đối cao. Do đó việc dự đoán thuộc một trong hai lớp đều được chấp nhận cho nhãn thực của lớp kia.
+\end{tcolorbox}
+
+\vspace{6pt}
+
+\begin{table}[H]
+  \centering
+  \caption{Chỉ Số Tổng Hợp}
+  \begin{tabularx}{\linewidth}{L{6cm} C{4cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{Chỉ số} & \textbf{Giá trị} \\
+    \midrule
+    Tổng số ảnh đánh giá        & 138 \\
+    \rowcolor{rowhighlight}
+    Tổng số ảnh phát hiện đúng  & 130 \\
+    Tổng số ảnh bỏ sót          & 8 \\
+    \rowcolor{rowhighlight}
+    \textbf{Tỷ lệ phát hiện tổng thể} & \textbf{94,20\%} \\
+    Thời gian suy luận trung bình & 1,070 s (cloud API) \\
+    \rowcolor{rowhighlight}
+    Thời gian suy luận nhỏ nhất  & 0,581 s \\
+    Thời gian suy luận lớn nhất  & 14,548 s (khởi động lạnh) \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+% ─────────────────────────────────────────────
+\section{Tổng Quan Bộ Dữ Liệu}
+
+\begin{table}[H]
+  \centering
+  \caption{Thống Kê Bộ Dữ Liệu -- Toàn Bộ Tập}
+  \begin{tabularx}{\linewidth}{L{5.5cm} C{3cm} C{3cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{Thuộc tính} & \textbf{Giá trị} & \textbf{Ghi chú} \\
+    \midrule
+    Tổng số ảnh              & 1028    & \\
+    \rowcolor{rowhighlight}
+    Tổng số nhãn             & 1.798  & Trung bình 1,9 nhãn/ảnh \\
+    Nhãn bị thiếu            & 0      & Sạch \\
+    \rowcolor{rowhighlight}
+    Ảnh không có nhãn        & 0      & Sạch \\
+    Số lớp                   & 4      & Phạm vi cuối cùng \\
+    \rowcolor{rowhighlight}
+    Kích thước ảnh trung bình & 0,41 MP & \\
+    Tỷ lệ khung hình trung vị & 640 $\times$ 612 & Gần vuông \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{Số Lượng Nhãn Theo Lớp}
+  \begin{tabularx}{\linewidth}{L{4cm} C{3cm} C{4cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{Lớp} & \textbf{Số lượng} & \textbf{Trạng thái} \\
+    \midrule
+    \texttt{crack} (nứt)           & 563 & \textcolor{success}{\textbf{Đủ}} \\
+    \rowcolor{rowhighlight}
+    \texttt{thorn\_split} (gai gãy) & 500 & \textcolor{success}{\textbf{Đủ}} \\
+    \texttt{fungus} (nấm mốc)      & 427 & \textcolor{success}{\textbf{Đủ}} \\
+    \rowcolor{rowhighlight}
+    \texttt{dark\_spot} (đốm đen)  & 308 & \textcolor{success}{\textbf{Đủ}} \\
+    \midrule
+    \textbf{Tổng cộng}             & \textbf{1.798} & \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{Phân Bố Kích Thước và Tỷ Lệ Khung Hình}
+  \begin{tabularx}{\linewidth}{L{3cm} C{2.5cm} C{2cm} | L{3cm} C{2.5cm} C{2cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{Kích thước} & \textbf{Số lượng} & \textbf{\%} &
+    \textbf{Tỷ lệ} & \textbf{Số lượng} & \textbf{\%} \\
+    \midrule
+    Lớn (Large)   & 552 & 59,5\% & Cao (Tall)       & 289 & 31,1\% \\
+    \rowcolor{rowhighlight}
+    Rất lớn (Jumbo) & 234 & 25,2\% & Rất rộng        & 245 & 26,4\% \\
+    Vừa (Medium)  & 115 & 12,4\% & Rộng (Wide)      & 238 & 25,6\% \\
+    \rowcolor{rowhighlight}
+    Nhỏ (Small)   & 27  & 2,9\%  & Vuông (Square)   & 156 & 16,8\% \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+% ─────────────────────────────────────────────
+\section{Hiệu Suất Theo Từng Lớp}
+
+\subsection{Tỷ Lệ Phát Hiện Theo Lớp Lỗi}
+
+\begin{table}[H]
+  \centering
+  \caption{Tỷ Lệ Phát Hiện Cấp Ảnh Theo Lớp}
+  \begin{tabularx}{\linewidth}{L{3.5cm} C{2.5cm} C{2cm} C{2cm} C{3cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{Lớp} & \textbf{Số ảnh} & \textbf{Đúng} & \textbf{Bỏ sót} & \textbf{Tỷ lệ} \\
+    \midrule
+    \texttt{crack}        & 51  & 51 & 0 & \textcolor{success}{\textbf{100,0\%}} \\
+    \rowcolor{rowhighlight}
+    \texttt{thorn\_split} & 19  & 18 & 1 & \textcolor{success}{\textbf{94,7\%}} \\
+    \texttt{fungus}       & 48  & 44 & 4 & \textcolor{success}{\textbf{91,7\%}} \\
+    \rowcolor{rowhighlight}
+    \texttt{dark\_spot}   & 31  & 27 & 4 & \textcolor{warning}{\textbf{87,1\%}} \\
+    \midrule
+    \textbf{Tổng thể}     & \textbf{138} & \textbf{130} & \textbf{8} & \textcolor{success}{\textbf{94,20\%}} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{tcolorbox}[notebox]
+  Một số ảnh chứa nhiều lớp lỗi cùng lúc (ví dụ: \texttt{dark\_spot} + \texttt{fungus}), do đó tổng số ảnh theo từng lớp có thể lớn hơn 138.
+\end{tcolorbox}
+
+\subsection{Phân Bố Độ Tin Cậy Theo Lớp}
+
+\begin{table}[H]
+  \centering
+  \caption{Thống Kê Độ Tin Cậy Dự Đoán}
+  \begin{tabularx}{\linewidth}{L{3.5cm} C{2.8cm} C{2.5cm} C{2.5cm} C{2.5cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{Lớp} & \textbf{Số dự đoán} & \textbf{TB} & \textbf{Nhỏ nhất} & \textbf{Lớn nhất} \\
+    \midrule
+    \texttt{dark\_spot}   & 22 & 0,865 & 0,512 & 0,969 \\
+    \rowcolor{rowhighlight}
+    \texttt{crack}        & 86 & 0,832 & 0,436 & 0,967 \\
+    \texttt{thorn\_split} & 58 & 0,782 & 0,438 & 0,956 \\
+    \rowcolor{rowhighlight}
+    \texttt{fungus}       & 62 & 0,721 & 0,255 & 0,954 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\textbf{Nhận xét quan trọng:} \texttt{fungus} có độ tin cậy trung bình thấp nhất (0,721) và biên độ dao động lớn nhất, với một số dự đoán chỉ đạt 0,255. Mô hình nhất quán kém chắc chắn hơn khi phát hiện nấm mốc, đặc biệt trên các ảnh được tăng cường mạnh hoặc xoay. Có 2 nguyên nhân: do nhiều trường hợp nằm trong phần thâm (\texttt{dark\_spot}); do các phần mốc kích thước nhỏ và rải rác  
+
+% ─────────────────────────────────────────────
+\section{Hiệu Suất Ảnh Đa Lớp}
+
+Các ảnh có nhiều hơn một lớp lỗi yêu cầu mô hình phải phát hiện \textit{tất cả} các lớp hiện diện để được tính là phát hiện đúng.
+
+\begin{table}[H]
+  \centering
+  \caption{Kết Quả Ảnh Đa Lớp}
+  \begin{tabularx}{\linewidth}{L{6cm} C{4cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{Chỉ số} & \textbf{Giá trị} \\
+    \midrule
+    Số ảnh đa lớp              & 11 \\
+    \rowcolor{rowhighlight}
+    Phát hiện đúng             & 9 \\
+    Bỏ sót                     & 2 \\
+    \rowcolor{rowhighlight}
+    \textbf{Tỷ lệ phát hiện}   & \textbf{81,8\%} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+% ─────────────────────────────────────────────
+\section{Phân Tích Chi Tiết Ảnh Bị Bỏ Sót}
+
+8 ảnh không được phát hiện chính xác. Các lỗi chia thành hai nhóm.
+
+\subsection{Không Có Dự Đoán Nào Được Trả Về}
+
+\begin{table}[H]
+  \centering
+  \caption{Các Ảnh Không Có Dự Đoán}
+  \begin{tabularx}{\linewidth}{C{0.6cm} L{7cm} L{4cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{\#} & \textbf{Tên ảnh (rút gọn)} & \textbf{Lớp kỳ vọng} \\
+    \midrule
+    1 & \texttt{images-2-\_jpg.rf.45209...} & \texttt{dark\_spot}, \texttt{fungus} \\
+    \rowcolor{rowhighlight}
+    2 & \texttt{afruitrot1a\_jpg.rf.81fe1...} & \texttt{fungus} \\
+    3 & \texttt{rotated270\_fugus\_durian56...} & \texttt{fungus} \\
+    \rowcolor{rowhighlight}
+    4 & \texttt{tinh-trang-be-gai-tren...} & \texttt{thorn\_split} \\
+    5 & \texttt{2014\_\_blur\_bright\_png...} & \texttt{dark\_spot} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\textbf{Giả thuyết nguyên nhân:} Các hiện vật tăng cường bất thường (làm mờ + độ sáng, cân bằng histogram), xoay cực đoan (270\textdegree), hoặc vùng lỗi tương phản thấp rơi xuống dưới ngưỡng tin cậy của mô hình.
+
+\subsection{Dự Đoán Sai Lớp}
+
+\begin{table}[H]
+  \centering
+  \caption{Các Ảnh Bị Phân Loại Sai}
+  \begin{tabularx}{\linewidth}{C{0.6cm} L{4.5cm} L{2.5cm} L{3.5cm} C{2cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{\#} & \textbf{Tên ảnh (rút gọn)} & \textbf{Kỳ vọng} & \textbf{Dự đoán} & \textbf{Độ TC} \\
+    \midrule
+    6 & \texttt{AdobeStock\_267183627...} & \texttt{crack}, \texttt{fungus} & Chỉ \texttt{crack} & 0,65 \\
+    \rowcolor{rowhighlight}
+    7 & \texttt{6049\_\_contrast\_down...} & \texttt{dark\_spot} & \texttt{thorn\_split} & 0,93 \\
+    8 & \texttt{6044\_\_gamma\_flip...}    & \texttt{dark\_spot} & \texttt{thorn\_split} & 0,86 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{tcolorbox}[warnbox]
+  \textbf{Vấn đề cần chú ý -- ảnh \#7 và \#8:} Mô hình dự đoán \texttt{thorn\_split} với độ tin cậy cao (0,93 và 0,86) trong khi nhãn thực tế là \texttt{dark\_spot}. Điều này cho thấy sự nhầm lẫn giữa \texttt{dark\_spot} và \texttt{thorn\_split} khi áp dụng tăng cường giảm độ tương phản và lật gamma. Các phép tăng cường này có thể tạo ra ảnh ngoài phân phối thực tế.
+\end{tcolorbox}
+
+\subsection{Tổng Hợp Các Dạng Lỗi}
+
+\begin{table}[H]
+  \centering
+  \caption{Phân Tích Dạng Lỗi}
+  \begin{tabularx}{\linewidth}{L{4cm} C{1.8cm} L{3.5cm} L{4cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{Dạng lỗi} & \textbf{Số lượng} & \textbf{Lớp bị ảnh hưởng} & \textbf{Nguyên nhân} \\
+    \midrule
+    Không có dự đoán    & 5 & \texttt{fungus} (2), \texttt{dark\_spot} (2), \texttt{thorn\_split} (1) & Tăng cường mạnh (mờ, cân bằng, xoay 270\textdegree) \\
+    \rowcolor{rowhighlight}
+    Phát hiện một phần  & 1 & \texttt{fungus} bị bỏ sót & Chỉ phát hiện \texttt{crack} \\
+    Phân loại sai lớp   & 2 & \texttt{dark\_spot} $\to$ \texttt{thorn\_split} & Giảm tương phản, lật gamma \\
+    \midrule
+    \textbf{Tổng cộng}  & \textbf{8} & & \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+% ─────────────────────────────────────────────
+\section{Hiệu Suất Thời Gian Suy Luận}
+
+\begin{table}[H]
+  \centering
+  \caption{Thời Gian Suy Luận -- Roboflow Cloud API}
+  \begin{tabularx}{\linewidth}{L{6cm} C{4cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{Chỉ số} & \textbf{Giá trị} \\
+    \midrule
+    Thời gian trung bình       & 1,070 s \\
+    \rowcolor{rowhighlight}
+    Thời gian nhỏ nhất         & 0,581 s \\
+    Thời gian lớn nhất         & 14,548 s \\
+    \rowcolor{rowhighlight}
+    Tổng thời gian đánh giá    & $\approx$147,7 s \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+
+% ─────────────────────────────────────────────
+\section{Đánh Giá Ngưỡng KPI}
+
+\begin{table}[H]
+  \centering
+  \caption{Kết Quả Ngưỡng KPI Giai Đoạn 2}
+  \begin{tabularx}{\linewidth}{L{5cm} C{2.5cm} C{2.5cm} C{3cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{KPI} & \textbf{Mục tiêu} & \textbf{Thực tế} & \textbf{Trạng thái} \\
+    \midrule
+    Tỷ lệ phát hiện tổng thể         & $\geq$85\%  & 94,20\% & \pass \\
+    \rowcolor{rowhighlight}
+    Tỷ lệ -- \texttt{crack}          & $\geq$85\%  & 100,0\% & \pass \\
+    Tỷ lệ -- \texttt{fungus}         & $\geq$85\%  & 91,7\%  & \pass \\
+    \rowcolor{rowhighlight}
+    Tỷ lệ -- \texttt{dark\_spot}     & $\geq$85\%  & 87,1\%  & \marginal \\
+    Tỷ lệ -- \texttt{thorn\_split}   & $\geq$85\%  & 94,7\%  & \pass \\
+    \rowcolor{rowhighlight}
+    Độ trễ suy luận                  & \textless{}200ms & N/A (cloud) & \notapplicable \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{tcolorbox}[kpibox]
+  \textbf{Quyết định ngưỡng Giai Đoạn 2: ĐẠT.} Tất cả KPI độ chính xác đều được đáp ứng. Mô hình được phép tiến sang Giai Đoạn 3 phát triển ứng dụng lõi. \texttt{dark\_spot} đạt 87,1\% (mục tiêu: 85\%) nhưng gần với ngưỡng nhất và cần được ưu tiên trong chu kỳ huấn luyện lại tiếp theo. Xác nhận độ trễ trên thiết bị được hoãn lại và phải được xác nhận trước Giai Đoạn 5 thí điểm.
+\end{tcolorbox}
+
+% ─────────────────────────────────────────────
+\section{Phân Tích Bổ Sung: Đánh Giá Nghiêm Ngặt Cấp Hộp (IoU)}
+
+Đánh giá ở Mục 3--7 sử dụng \textbf{tỷ lệ phát hiện cấp ảnh}: một ảnh được tính là "đúng" nếu mọi lớp lỗi mong đợi xuất hiện ở đâu đó trong ảnh, bất kể vị trí hộp giới hạn (bounding box) có chính xác hay không. Mục này bổ sung một lớp đánh giá nghiêm ngặt hơn, theo đúng chuẩn object detection: khớp từng hộp dự đoán với hộp nhãn thực bằng \textbf{IoU (Intersection over Union) $\geq$ 0,5} -- cùng ngưỡng dùng để tính mAP@0,5 trong YOLO/COCO -- rồi tính precision, recall, F1, AP và ma trận nhầm lẫn ở cấp độ từng hộp. Dữ liệu được tính từ \texttt{evaluation\_results.json} (đã bổ sung tọa độ hộp nhãn thực) bằng script mới \texttt{compute\_benchmarks.py}.
+
+\begin{tcolorbox}[notebox]
+\textbf{Vì sao chỉ số ở đây khác biệt lớn so với Mục 3--7:} Một ảnh có thể "đạt" theo tỷ lệ phát hiện cấp ảnh (chỉ cần phát hiện đúng lớp ở đâu đó trong ảnh) nhưng vẫn bị tính là bỏ sót (FN) hoặc dương tính giả (FP) ở cấp độ từng hộp -- ví dụ một ảnh chứa 2 vết nứt nhưng mô hình chỉ khoanh đúng 1 vết vẫn được tính "đạt" ở Mục 3 nhưng chỉ đạt 50\% recall ở đây. Đây là hai phép đo hợp lệ cho hai câu hỏi khác nhau: "lớp lỗi này có xuất hiện trong ảnh không" so với "từng lỗi cụ thể có được khoanh đúng vị trí không".
+\end{tcolorbox}
+
+\vspace{6pt}
+
+\begin{table}[H]
+  \centering
+  \caption{Precision / Recall / F1 Theo Lớp (IoU $\geq$ 0,5, tại ngưỡng tin cậy đang triển khai)}
+  \begin{tabularx}{\linewidth}{L{2.8cm} C{0.9cm} C{0.9cm} C{0.9cm} C{0.9cm} C{2.3cm} C{2.0cm} C{1.4cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{Lớp} & \textbf{GT} & \textbf{TP} & \textbf{FP} & \textbf{FN} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} \\
+    \midrule
+    \texttt{crack}        & 87 & 51 & 47 & 36 & 52,04\% & 58,62\% & 55,14\% \\
+    \rowcolor{rowhighlight}
+    \texttt{dark\_spot}   & 41 & 10 & 17 & 31 & 37,04\% & 24,39\% & 29,41\% \\
+    \texttt{fungus}       & 65 & 24 & 45 & 41 & 34,78\% & 36,92\% & 35,82\% \\
+    \rowcolor{rowhighlight}
+    \texttt{thorn\_split} & 65 & 0  & 68 & 65 & \textcolor{danger}{\textbf{0,00\%}} & \textcolor{danger}{\textbf{0,00\%}} & \textcolor{danger}{\textbf{0,00\%}} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{AP@0,5 Theo Lớp và Chỉ Số Tổng Hợp}
+  \begin{tabularx}{\linewidth}{L{7cm} C{3cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{Chỉ số} & \textbf{Giá trị} \\
+    \midrule
+    AP@0,5 -- \texttt{crack}        & 38,49\% \\
+    \rowcolor{rowhighlight}
+    AP@0,5 -- \texttt{dark\_spot}   & 12,60\% \\
+    AP@0,5 -- \texttt{fungus}       & 26,38\% \\
+    \rowcolor{rowhighlight}
+    AP@0,5 -- \texttt{thorn\_split} & \textcolor{danger}{\textbf{0,00\%}} \\
+    \midrule
+    \textbf{mAP@0,5 (trung bình toàn bộ lớp)} & \textbf{19,37\%} \\
+    \rowcolor{rowhighlight}
+    Micro Precision / Recall / F1 & 32,44\% / 32,95\% / 32,69\% \\
+    Macro Precision / Recall / F1 & 30,97\% / 29,98\% / 30,09\% \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Ma Trận Nhầm Lẫn Cấp Hộp}
+
+\begin{table}[H]
+  \centering
+  \caption{Ma Trận Nhầm Lẫn (hàng = nhãn thực, cột = dự đoán, IoU $\geq$ 0,5)}
+  \begin{tabularx}{\linewidth}{L{2.6cm} C{1.1cm} C{2.0cm} C{1.3cm} C{2.6cm} C{1.9cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{Thực \textbackslash{} Dự đoán} & \texttt{crack} & \texttt{dark\_spot} & \texttt{fungus} & \texttt{thorn\_split} & \textbf{background} \\
+    \midrule
+    \texttt{crack}        & 51 & 0  & 0  & 0  & 36 \\
+    \rowcolor{rowhighlight}
+    \texttt{dark\_spot}   & 0  & 9  & 4  & 0  & 28 \\
+    \texttt{fungus}       & 0  & 0  & 24 & 0  & 41 \\
+    \rowcolor{rowhighlight}
+    \texttt{thorn\_split} & 0  & 0  & 0  & 0  & \textcolor{danger}{\textbf{65}} \\
+    \textbf{background}   & 47 & 18 & 41 & \textcolor{danger}{\textbf{68}} & 0 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{tcolorbox}[notebox]
+\textbf{Lưu ý về sai số nhỏ giữa hai bảng:} Số TP của \texttt{dark\_spot} trong ma trận nhầm lẫn (9) chênh lệch nhẹ so với bảng precision/recall (10). Nguyên nhân là hai thuật toán khớp hộp khác nhau: bảng precision/recall khớp theo từng lớp riêng biệt (sắp xếp theo độ tin cậy giảm dần), còn ma trận nhầm lẫn khớp toàn cục theo IoU cao nhất giữa mọi cặp dự đoán--nhãn thực trong ảnh (để phát hiện nhầm lớp). Sai số này không ảnh hưởng đến kết luận tổng thể nhưng cần thống nhất một thuật toán khớp hộp duy nhất ở phiên bản script tiếp theo.
+\end{tcolorbox}
+
+\begin{tcolorbox}[notebox]
+\textbf{Kết quả xác minh -- \texttt{thorn\_split} đạt 0\% do sai lệch mức độ chi tiết nhãn (annotation granularity mismatch):} Sau khi kiểm tra, ánh xạ chỉ số lớp (class-index) đã được xác nhận là \textbf{đúng} -- thứ tự \texttt{CLASS\_NAMES = ['crack', 'dark\_spot', 'fungus', 'thorn\_split']} trong \texttt{run\_workflow.py} khớp chính xác với chỉ số trong tệp nhãn. Nguyên nhân thực sự là \textbf{sự khác biệt về quy ước gán nhãn}:
+\begin{enumerate}[leftmargin=1.5em]
+  \item \textbf{Nhãn thực (Ground Truth)} sử dụng hộp giới hạn rất lớn, bao trùm 50--75\% diện tích ảnh (ví dụ: một hộp GT có kích thước 313$\times$321 px trên ảnh 640$\times$640 px).
+  \item \textbf{Dự đoán của mô hình} là các hộp nhỏ, khoanh đúng từng điểm nứt gai cụ thể trên bề mặt quả (50--106 px).
+  \item \textbf{Hệ quả:} Dù hộp dự đoán nằm \textit{bên trong} hộp GT, tỷ số kích thước quá chênh lệch khiến IoU luôn $<$ 0,25 -- thấp hơn nhiều so với ngưỡng 0,5 tiêu chuẩn.
+\end{enumerate}
+Đây là vấn đề về \textbf{quy ước gán nhãn} (annotation convention), \textit{không phải} lỗi mô hình hay lỗi ánh xạ chỉ số lớp. Mô hình phát hiện đúng lớp \texttt{thorn\_split} (tỷ lệ cấp ảnh 94,7\% ở Mục 3), nhưng cách gán nhãn bounding box quá khác biệt giữa tập huấn luyện (trên Roboflow) và tập kiểm thử khiến chỉ số IoU bị ảnh hưởng.
+\end{tcolorbox}
+
+\subsection{Thông Số Kiến Trúc Mô Hình \& Chỉ Số Huấn Luyện (Checkpoint best.pt)}
+
+Mô hình đã được huấn luyện thành công trên môi trường Google Colab (GPU T4, 50 epochs, batch=16, imgsz=640) với bộ dữ liệu \texttt{durian-1} (4 lớp lỗi: \texttt{crack}, \texttt{dark\_spot}, \texttt{fungus}, \texttt{thorn\_split}). File trọng số \texttt{best.pt} (5,14~MB) đã được tải về và xác thực cục bộ.
+
+\begin{table}[H]
+  \centering
+  \caption{Thông Số Kiến Trúc \& Hiệu Năng Huấn Luyện YOLOv26n (\texttt{best.pt})}
+  \begin{tabularx}{\linewidth}{L{5.5cm} C{3.2cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{Thông số / Chỉ số} & \textbf{Giá trị thực tế} \\
+    \midrule
+    Kiến trúc mô hình & YOLOv26n (End-to-End Detection) \\
+    \rowcolor{rowhighlight}
+    Số tầng kiến trúc & 24 khối (454 sub-modules) \\
+    Số tham số thực tế (parameters) & \textbf{2.505.360} (2,51M params) \\
+    \rowcolor{rowhighlight}
+    Kích thước file trọng số (\texttt{best.pt}) & \textbf{5,14 MB} \\
+    Kích thước ảnh đầu vào & 640$\times$640 \\
+    \rowcolor{rowhighlight}
+    Số lớp phát hiện (nc) & 4 (crack, dark\_spot, fungus, thorn\_split) \\
+    Số epoch huấn luyện & 50 epochs \\
+    \rowcolor{rowhighlight}
+    \textbf{mAP@0,5 (Validation)} & \textbf{69,88\%} (0,6988) \\
+    \textbf{mAP@0,5:0,95 (Validation)} & \textbf{41,00\%} (0,4099) \\
+    \rowcolor{rowhighlight}
+    Precision (Validation) & 66,75\% (0,6675) \\
+    Recall (Validation) & 65,62\% (0,6562) \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{tcolorbox}[notebox]
+\textbf{Xác nhận hoàn thành:} Với việc hoàn tất huấn luyện và trích xuất thành công từ \texttt{best.pt}, chỉ số toàn diện \textbf{mAP@0,5:0,95 đạt 41,00\%} và \textbf{mAP@0,5 đạt 69,88\%}. Mô hình thể hiện sự cân bằng tốt giữa Precision (66,75\%) và Recall (65,62\%) trên tập validation, chứng minh mô hình YOLOv26n với kích thước nhỏ gọn (2,51M tham số, 5,14~MB) có khả năng phát hiện lỗi hiệu quả và rất phù hợp triển khai trên các thiết bị biên (edge deployment).
+\end{tcolorbox}
+
+\subsection{Độ Chính Xác Phân Hạng Đầu Cuối (End-to-End Grading)}
+
+Ngoài đánh giá ở cấp hộp giới hạn, hệ thống còn sử dụng \textbf{Rule Engine} (\texttt{core/rule\_engine.py}) kết hợp với bảng quy tắc nghiệp vụ (\texttt{config/benchmarks/standard\_qc\_v1.json}) để phân hạng tổng thể cho từng quả: \textbf{Hạng A} (không lỗi), \textbf{Hạng B} (lỗi nhẹ), \textbf{Hạng C} (nhiều lỗi), hoặc \textbf{Loại bỏ} (lỗi nghiêm trọng/nấm mốc). Đánh giá này đo lường \textit{độ chính xác thực tế của toàn bộ pipeline} -- từ phát hiện lỗi đến quyết định phân hạng cuối cùng -- trên 125 ảnh kiểm thử.
+
+\begin{table}[H]
+  \centering
+  \caption{Chỉ Số Phân Hạng Đầu Cuối}
+  \begin{tabularx}{\linewidth}{L{7cm} C{3cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{Chỉ số} & \textbf{Giá trị} \\
+    \midrule
+    Tổng số ảnh kiểm thử & 125 \\
+    \rowcolor{rowhighlight}
+    Số ảnh phân hạng khớp & 107 \\
+    \textbf{Độ chính xác phân hạng (Grading Agreement)} & \textbf{85,60\%} \\
+    \rowcolor{rowhighlight}
+    Recall phát hiện hàng Loại Bỏ & 93,33\% (70/75) \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{Ma Trận Nhầm Lẫn Phân Hạng (hàng = hạng thực, cột = hạng dự đoán)}
+  \begin{tabularx}{\linewidth}{L{3cm} C{2cm} C{2cm} C{2cm} C{2cm}}
+    \toprule
+    \rowcolor{tabheader}
+    \textbf{Thực \textbackslash{} Dự đoán} & \textbf{Hạng A} & \textbf{Hạng B} & \textbf{Hạng C} & \textbf{Loại bỏ} \\
+    \midrule
+    \textbf{Hạng A} & 0 & 0 & 0 & 0 \\
+    \rowcolor{rowhighlight}
+    \textbf{Hạng B} & 0 & \textbf{14} & 3 & 4 \\
+    \textbf{Hạng C} & 0 & 0 & \textbf{23} & 6 \\
+    \rowcolor{rowhighlight}
+    \textbf{Loại bỏ} & 1 & 2 & 2 & \textbf{70} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{tcolorbox}[notebox]
+\textbf{Phân tích:} Hệ thống có xu hướng \textit{bảo thủ} -- các lỗi phân hạng chủ yếu là hạ bậc (B$\rightarrow$C, B$\rightarrow$Loại bỏ, C$\rightarrow$Loại bỏ) do dương tính giả trong phát hiện lỗi. Đặc tính này \textbf{phù hợp với yêu cầu an toàn thực phẩm}: ưu tiên loại bỏ sản phẩm nghi ngờ hơn là để lọt hàng kém chất lượng. Chỉ có 1 trường hợp hàng Loại Bỏ bị phân sai thành Hạng A -- tỷ lệ rủi ro thấp (1,33\%).
+\end{tcolorbox}
+
+\begin{tcolorbox}[kpibox]
+\textbf{Ghi chú về Quyết định Giai Đoạn 2:} Phần đánh giá bổ sung này KHÔNG thay đổi quyết định ĐẠT ở Mục 7, vốn được đưa ra đúng theo phương pháp tỷ lệ phát hiện cấp ảnh đã công bố từ đầu báo cáo. Kết quả phân hạng đầu cuối (85,60\% khớp hạng) xác nhận hệ thống có khả năng vận hành thực tế. Tuy nhiên, khoảng cách giữa tỷ lệ phát hiện cấp ảnh (94,20\%) và mAP@0,5 cấp hộp (19,37\%) cho thấy cần cải thiện chất lượng định vị, đặc biệt là gán lại nhãn \texttt{thorn\_split} với bounding box cấp lỗi cục bộ thay vì bao trùm toàn bộ vùng.
+\end{tcolorbox}
+
+% ─────────────────────────────────────────────
+\section{Kế Hoạch Phát Triển}
+
+\subsection{Ngắn Hạn}
+
+\begin{enumerate}[leftmargin=1.5em]
+  \item \textbf{Tăng số lượng và quy mô bộ dữ liệu} -- cần tăng lên ít nhất 3000 ảnh theo kế hoạch ban đầu, tập trung vào tag \texttt{fungus} (nấm mốc), thêm tag \texttt{worm\_hole} (lỗ do sâu mọt gây ra).
+  \item \textbf{Giảm cường độ tăng cường cho dark\_spot} -- giảm tương phản và lật gamma có thể tạo ra ảnh ngoài phân phối thực. Xem lại cài đặt tăng cường cho lớp này.
+  \item \textbf{[Ưu tiên cao nhất] Gán lại nhãn \texttt{thorn\_split} với bounding box cấp lỗi cục bộ} -- xác minh ở Mục 8 cho thấy ánh xạ chỉ số lớp là đúng, nhưng nhãn GT dùng hộp bao trùm toàn vùng (50--75\% ảnh) trong khi mô hình khoanh từng điểm nứt gai cụ thể. Cần gán lại nhãn theo quy ước hộp cục bộ (per-defect bounding box) để chỉ số IoU phản ánh đúng chất lượng định vị thực tế.
+  \item \textbf{Đưa chỉ số cấp hộp vào quy trình đánh giá chuẩn} -- bổ sung Precision, Recall, F1, mAP@0,5 và ma trận nhầm lẫn (Mục 8) song song với tỷ lệ phát hiện cấp ảnh cho mọi chu kỳ huấn luyện lại tiếp theo, để tránh đánh giá quá lạc quan chất lượng định vị.
+  \item \textbf{[Đã hoàn thành] Huấn luyện trên Google Colab và tải trọng số} -- Đã hoàn tất huấn luyện mô hình trên GPU Google Colab (50 epochs), tải file \texttt{best.pt} (5,14~MB) về máy cục bộ và xác thực các chỉ số chính: mAP@0,5:0,95 đạt 41,00\%, mAP@0,5 đạt 69,88\%, quy mô 2,51M tham số. File trọng số này cũng sẵn sàng cho việc sinh bản đồ nhiệt Grad-CAM ở giai đoạn tiếp theo.
+\end{enumerate}
+
+\subsection{Trung Hạn}
+
+\begin{enumerate}[leftmargin=1.5em, resume]
+  \item \textbf{Hạ ngưỡng tin cậy cho fungus xuống 0,35} -- độ tin cậy trung bình hiện tại là 0,721 với giá trị nhỏ nhất là 0,255. Hạ ngưỡng sẽ phục hồi các phát hiện nấm mốc ở ranh giới với cái giá là thêm một số dự đoán dương tính giả.
+  \item \textbf{Chạy đo độ trễ trên thiết bị thực} -- xuất YOLOv26n sang định dạng OpenVINO IR và đo P95 trên máy Intel i5 mục tiêu trước Giai Đoạn 5. Mục tiêu: \textless{}200ms.
+  \item \textbf{Grad-CAM (Gradient-weighted Class Activation Mapping)} -- tạo bản đồ nhiệt (heatmap) trực quan hóa vùng mà mô hình tập trung khi phát hiện từng lớp lỗi, giúp xác minh mô hình đang ``nhìn'' đúng vị trí lỗi thực tế. Yêu cầu file trọng số \texttt{best.pt} trên máy cục bộ.
+\end{enumerate}
+
+\subsection{Dài Hạn}
+
+\begin{enumerate}[leftmargin=1.5em, resume]
+  \item \textbf{Cải thiện dữ liệu huấn luyện cho dark\_spot} -- bổ sung thêm các ví dụ để thu hẹp khoảng cách giữa hiệu suất hiện tại (87,1\%) và ngưỡng KPI (85\%).
+  \item \textbf{Quy trình đánh giá liên tục} -- tự động hóa việc đánh giá này như một phần của mỗi chu kỳ huấn luyện lại để theo dõi xu hướng tỷ lệ phát hiện qua các phiên bản mô hình.
+  \item \textbf{K-fold Cross-Validation} -- chia bộ dữ liệu thành $k$ fold và huấn luyện lại $k$ lần để đánh giá tính ổn định và phương sai của mô hình. Đây là thay đổi pipeline huấn luyện, phạm vi tuần--tháng, và nên được thực hiện như một milestone riêng biệt.
+\end{enumerate}
+
+% ─────────────────────────────────────────────
+\section*{Thông Tin Tài Liệu}
+
+\begin{tabular}{L{5cm} L{8.5cm}}
+  \textbf{Ngày tạo báo cáo}    & 26 tháng 5, 2026 \\
+  \textbf{Cập nhật lần cuối}    & 5 tháng 9, 2026 (v1.3) \\
+  \textbf{Mô hình}             & YOLOv26n -- Phát Hiện Đối Tượng (2,51M params, 5,14 MB) \\
+  \textbf{Nền tảng suy luận}   & Roboflow Cloud API \& Checkpoint Cục Bộ (\texttt{best.pt}) \\
+  \textbf{Bộ kiểm thử}         & 138 ảnh -- tập held-out \\
+  \textbf{Script nguồn}        & \texttt{run\_workflow.py} \\
+  \textbf{Dữ liệu đánh giá}    & \texttt{evaluation\_results.json} \\
+  \rowcolor{rowhighlight}
+  \textbf{Script bổ sung (Mục 8)} & \texttt{compute\_benchmarks.py}, \texttt{core/rule\_engine.py} \\
+  \textbf{Dữ liệu bổ sung (Mục 8)} & \texttt{benchmark\_results.json}, \texttt{benchmark\_results.md}, \texttt{best.pt} \\
+  \textbf{Phiên bản báo cáo}   & v1.3 \\
+\end{tabular}
+
+\vspace{1cm}
+{\small\color{darkgray}\textit{Bảo Mật -- Chỉ Sử Dụng Nội Bộ. Báo cáo này bao gồm đánh giá ngưỡng KPI Giai Đoạn 2 (Mục 7, theo phương pháp tỷ lệ phát hiện cấp ảnh), phân tích bổ sung ở cấp độ hộp giới hạn (Mục 8), thông số mô hình, và đánh giá phân hạng đầu cuối (85,60\% khớp hạng). Quyết định ĐẠT Giai Đoạn 2 không thay đổi. Xác nhận triển khai trên thiết bị được trình bày trong báo cáo thí điểm Giai Đoạn 5.}}
+
+\end{document}

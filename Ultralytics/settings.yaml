@@ -1,0 +1,17 @@
+settings_version: 0.0.4
+datasets_dir: /Users/iminluv/Documents/Durian-classification/datasets
+weights_dir: /Users/iminluv/Documents/Durian-classification/weights
+runs_dir: /Users/iminluv/Documents/Durian-classification/runs
+uuid: 38aa010fabc0cc873f8fca807b4eca992cd9bead498ab1155a922676bdd142c8
+sync: true
+api_key: ''
+openai_api_key: ''
+clearml: true
+comet: true
+dvc: true
+hub: true
+mlflow: true
+neptune: true
+raytune: true
+tensorboard: true
+wandb: true
